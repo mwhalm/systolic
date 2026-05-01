@@ -1,0 +1,92 @@
+0
+23
+-Mamsrun=
+-Masflags=
+-Mcc=gcc
+-Mcfl= -pipe -fPIC -O -I/opt/synopsys/vcs/W-2024.09-1/include
+-Mcplusplus=g++
+-Mcrt0=
+-Mcrtn=
+-Mcsrc=
+-Mexternalobj=
+-Mldflags= -rdynamic
+-Mobjects= /opt/synopsys/vcs/W-2024.09-1/linux64/lib/libvirsim.so /opt/synopsys/vcs/W-2024.09-1/linux64/lib/liberrorinf.so /opt/synopsys/vcs/W-2024.09-1/linux64/lib/libsnpsmalloc.so /opt/synopsys/vcs/W-2024.09-1/linux64/lib/libvfs.so
+-Mout=simv
+-Msaverestoreobj=/opt/synopsys/vcs/W-2024.09-1/linux64/lib/vcs_save_restore_new.o
+-Msyslibs=-ldl
+-Mvcsaceobjs=
+-Mxcflags= -pipe -fPIC -I/opt/synopsys/vcs/W-2024.09-1/include
+-Mxllcflags=
+-full64
+-gen_obj
+-picarchive
+-sverilog
+/opt/synopsys/vcs/W-2024.09-1/linux64/bin/vcs1
+pe.sv
+55
+XDG_SESSION_TYPE=tty
+XDG_SESSION_ID=14855
+XDG_SESSION_CLASS=user
+XDG_RUNTIME_DIR=/run/user/1202996
+XDG_DATA_DIRS=/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop
+VMR_MODE_FLAG=64
+VERDI_HOME=/opt/synopsys/verdi/W-2024.09-1
+VC_STATIC_HOME=/opt/synopsys/vc_formal/vc_formal/X-2025.06
+VCS_PYTHON3=/opt/synopsys/vcs/W-2024.09-1/linux64/bin/Python3/bin/python3
+VCS_PATHMAP_PRELOAD_DONE=1
+VCS_MX_HOME_INTERNAL=1
+VCS_MODE_FLAG=64
+VCS_INTERNAL_CONVERTEDLIBS=
+VCS_HOME=/opt/synopsys/vcs/W-2024.09-1
+VCS_EXEC_DONE=1
+VCS_DEPTH=0
+VCS_ARG_ADDED_FOR_TMP=1
+VCS_ARCH=linux64
+USER_PATH=/home/mwhalm/.local/bin:/home/mwhalm/.local/bin:/opt/server-tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+UNAME=/bin/uname
+TOOL_HOME=/opt/synopsys/vcs/W-2024.09-1/linux64
+SSH_TTY=/dev/pts/7
+SSH_CONNECTION=172.25.229.55 58272 169.237.212.104 22
+SSH_CLIENT=172.25.229.55 58272 22
+SNPS_VCS_PYTHON3=/opt/synopsys/vcs/W-2024.09-1/linux64/bin/Python3/bin/python3
+SNPS_VCS_CLANG_PATH=/opt/synopsys/vcs/W-2024.09-1/linux64/clang
+SNPS_INTERNAL_VCS_LINUX_OS=linux
+SINGULARITY_NAME=rocky.sif
+SINGULARITY_ENVIRONMENT=/.singularity.d/env/91-environment.sh
+SINGULARITY_CONTAINER=/opt/synopsys/rocky.sif
+SINGULARITY_BIND=/opt
+SCRNAME=vcs
+SCRIPT_NAME=vcs
+PROMPT_COMMAND=PS1="Apptainer> "; unset PROMPT_COMMAND
+OVA_UUM=0
+OPENROUTER_API_KEY=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
+LIBRARY_PATH=/usr/lib64:/usr/lib
+LESSOPEN=| /usr/bin/lesspipe %s
+LESSCLOSE=/usr/bin/lesspipe %s %s
+LC_NUMERIC=C
+LC_HOME=/opt/synopsys/prime/W-2024.09-SP1
+LC_ALL=C
+KRB5CCNAME=FILE:/tmp/krb5cc_1202996_oFnXnm
+GEMINI_API_KEY=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
+EDA_CUSTOMER_TOKEN=cust_682c741a00203888bf9a3112623c9745
+DEBUGINFOD_URLS=https://debuginfod.ubuntu.com 
+DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1202996/bus
+C_INCLUDE_PATH=/usr/include
+CPATH=/usr/include
+APPTAINER_NAME=rocky.sif
+APPTAINER_ENVIRONMENT=/.singularity.d/env/91-environment.sh
+APPTAINER_CONTAINER=/opt/synopsys/rocky.sif
+APPTAINER_COMMAND=exec
+APPTAINER_BIND=/opt
+APPTAINER_APPNAME=
+0
+0
+1
+1777624964 pe.sv
+4
+1729655332 /opt/synopsys/vcs/W-2024.09-1/linux64/lib/libvirsim.so
+1729654105 /opt/synopsys/vcs/W-2024.09-1/linux64/lib/liberrorinf.so
+1729654092 /opt/synopsys/vcs/W-2024.09-1/linux64/lib/libsnpsmalloc.so
+1729654089 /opt/synopsys/vcs/W-2024.09-1/linux64/lib/libvfs.so
+1777624992 simv.daidir
+-1 partitionlib
