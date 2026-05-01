@@ -5,7 +5,8 @@ module pe #(
 	)(
 	input logic clk,
 	input logic rst,
-	input logic en,
+	input logic pe_en,
+	input state,
 	input logic signed [IA_WIDTH - 1 : 0] ia_in,
 	input logic signed [W_WIDTH - 1 : 0] w_in,
 	input logic signed [OA_WIDTH - 1 : 0] oa_in,
@@ -15,6 +16,9 @@ module pe #(
 	output logic signed [OA_WIDTH - 1 : 0] oa_out
 );
 
+logic [W_WIDTH - 1 : 0] weight;
+logic [IA_WIDTH - 1 : 0] input_data;
+
 always_ff @(posedge clk) begin
 	if (!rst) begin
 		ia_out <= '0;
@@ -23,7 +27,7 @@ always_ff @(posedge clk) begin
 	end else begin
 		ia_out <= ia_in;
 		w_out <= w_in;
-		if (en) begin
+		if (pe_en) begin
 			oa_out <= oa_in + (ia_in * w_in);
 		end else begin
 			oa_out <= oa_in;
