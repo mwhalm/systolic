@@ -5,39 +5,37 @@ module pe #(
 )(
 	input logic clk,
 	input logic rst,
-	input logic en,
-	input logic valid,
+	input logic en_top,
+	input logic en_left,
+	input logic load_weight,
 	input logic signed [IA_WIDTH - 1 : 0] ia_in,
 	input logic signed [W_WIDTH - 1 : 0] w_in,
 	input logic signed [OA_WIDTH - 1 : 0] oa_in,
 
+	output logic en_right,
+	output logic en_bot,
 	output logic signed [IA_WIDTH - 1 : 0] ia_out,
-	output logic signed [W_WIDTH - 1 : 0] w_out,
 	output logic signed [OA_WIDTH - 1 : 0] oa_out
 );
 
 logic [W_WIDTH - 1 : 0] weight;
 logic [IA_WIDTH - 1 : 0] input_data;
+logic en = en_top | en_left;
 
 always_ff @(posedge clk) begin
-	if (rst) begin
+	if (!rst) begin
 		ia_out <= '0;
-		w_out <= '0;
 		oa_out <= '0;
 	end else begin
-		ia_out <= ia_in;
-		w_out <= w_in;
-
+		en_right <= en;
+		en_bot <= en;
+		
 		if (load_weight) begin
 			weight <= w_in;
-		end else begin
-			weight <= weight;
-		end
 		
-		if (en && valid) begin
+		if (en) begin
+			ia_out <= ia_in;
 			oa_out <= oa_in + (ia_in * weight);
-		end else begin
-			oa_out <= oa_in;
 		end
 	end
 end
