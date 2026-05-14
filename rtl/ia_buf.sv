@@ -25,7 +25,7 @@ always_ff @(posedge clk) begin
 			end
 		end
 		if(en) begin
-			buf_out <= ia_buf[0]
+			buf_out <= ia_buf[0];
 			for(int i = 0; i < N - 1; i++) begin
 				ia_buf[i] <= ia_buf[i + 1];
 			end	

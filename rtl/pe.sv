@@ -1,7 +1,7 @@
 module pe #(
 	parameter IA_WIDTH = 8,
 	parameter W_WIDTH = 8,
-	parameter OA_WIDTH = 20
+	parameter OA_WIDTH = 24
 )(
 	input logic clk,
 	input logic rst,
@@ -18,9 +18,10 @@ module pe #(
 	output logic signed [OA_WIDTH - 1 : 0] oa_out
 );
 
-logic [W_WIDTH - 1 : 0] weight;
-logic [IA_WIDTH - 1 : 0] input_data;
-logic en = en_top | en_left;
+logic signed [W_WIDTH - 1 : 0] weight;
+logic en;
+
+assign en = en_top | en_left;
 
 always_ff @(posedge clk) begin
 	if (!rst) begin
@@ -30,7 +31,7 @@ always_ff @(posedge clk) begin
 		en_right <= en;
 		en_bot <= en;
 		
-		if (load_weight) begin
+		if (load_weight)
 			weight <= w_in;
 		
 		if (en) begin

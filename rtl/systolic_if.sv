@@ -1,0 +1,36 @@
+interface systolic_if #(
+	parameter N = 8,
+	parameter IA_WIDTH = 8,
+	parameter W_WIDTH = 8,
+	parameter OA_WIDTH = 24
+) (
+	input logic clk
+);
+	logic rst;
+	logic start;
+    logic done;
+	logic signed [IA_WIDTH - 1 : 0] ia_in [0 : N - 1][0 : N - 1];
+	logic signed [W_WIDTH - 1 : 0] w_in [0 : N - 1][0 : N - 1];
+	logic signed [OA_WIDTH - 1 : 0] oa_out [0 : N - 1][0 : N - 1];
+
+    modport drv (
+        input  clk,
+        input  oa_out,
+        input done,
+        
+        output start,
+        output rst,
+        output ia_in,
+        output w_in
+    );
+
+    modport mon (
+        input clk,
+        input rst,
+        input start,
+        input ia_in,
+        input w_in,
+        input oa_out,
+        input done
+    );
+endinterface

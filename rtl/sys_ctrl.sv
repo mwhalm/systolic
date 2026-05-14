@@ -1,24 +1,30 @@
 module sys_ctrl #(
-	parameter N = 8;
+	parameter N = 8
 ) (
 	input clk,
 	input rst,
 	input start,
 
 	output load,
-	output idle
+	output en,
+	output done
 );
 	typedef enum logic [1:0] {
 		IDLE,
 		LOAD,
 		COMPUTE,
+		DONE
 	} state_t;
 	
-	localparam COMPUTE_CYCLES = 2 * N - 1;
+	localparam COMPUTE_CYCLES = 3 * N - 1;
 
 	state_t state, next;
 
-	logic [$clog2(2 * N) - 1 : 0] count;
+	logic [$clog2(2 * N): 0] count;
+
+	assign load = (state == LOAD);
+	assign en = (state == COMPUTE);
+	assign done = (state == DONE);
 
 	always_ff @(posedge clk) begin
 		if(!rst) begin
@@ -32,22 +38,23 @@ module sys_ctrl #(
 
 	always_comb begin
 		next = state;
-		idle = 1'b0;
-		load_weight = 1'b0;
 
 		case(state)
 			IDLE: begin
-				idle = 1'b1;
 				if(start)
-					next = LOAD_WEIGHT;
+					next = LOAD;
 			end
 			LOAD: begin
-				load = 1'b1;
 				next = COMPUTE;
 			end 
 			COMPUTE: begin
 				if(count == COMPUTE_CYCLES)
+					next = DONE;
+			end
+			DONE: begin
+				if(start)
 					next = IDLE;
 			end
+		endcase
 	end
 endmodule
