@@ -23,16 +23,16 @@ class sys_monitor extends uvm_component;
         sys_item item;
         forever begin
             @(posedge vif.clk);
-            if (vif.done && vif.rst) begin
-                item = sys_item::type_id::create("mon_item");
-                for (int i = 0; i < N; i++) begin
-                    for (int j = 0; j < N; j++) begin
-                        item.act[i][j] = vif.oa_out[i][j];
-                    end
+            wait(vif.done == 1'b1);
+            item = sys_item::type_id::create("mon_item");
+            for (int i = 0; i < N; i++) begin
+                for (int j = 0; j < N; j++) begin
+                    item.act[i][j] = vif.oa_out[i][j];
                 end
-                mon_port.write(item);
-                `uvm_info("MON", "Captured systolic output matrix", UVM_MEDIUM)
             end
+            mon_port.write(item);
+            `uvm_info("MON", "Captured systolic output matrix", UVM_MEDIUM)
+            wait(vif.done == 1'b0);
         end
     endtask
 endclass

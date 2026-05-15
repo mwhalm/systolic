@@ -9,6 +9,7 @@ interface systolic_if #(
 	logic rst;
 	logic start;
     logic done;
+    logic [1 : 0] method;
 	logic signed [IA_WIDTH - 1 : 0] ia_in [0 : N - 1][0 : N - 1];
 	logic signed [W_WIDTH - 1 : 0] w_in [0 : N - 1][0 : N - 1];
 	logic signed [OA_WIDTH - 1 : 0] oa_out [0 : N - 1][0 : N - 1];
@@ -18,6 +19,7 @@ interface systolic_if #(
         input  oa_out,
         input done,
         
+        output method,
         output start,
         output rst,
         output ia_in,
@@ -31,6 +33,7 @@ interface systolic_if #(
         input ia_in,
         input w_in,
         input oa_out,
-        input done
+        input done,
+        input method
     );
 endinterface

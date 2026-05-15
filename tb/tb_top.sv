@@ -25,6 +25,7 @@ module tb_top;
         .clk(clk),
         .rst(sif.rst),
         .start(sif.start),
+        .method(sif.method),
         .ia_in(sif.ia_in),
         .w_in(sif.w_in),
         .done(sif.done),

@@ -7,36 +7,36 @@ module pe #(
 	input logic rst,
 	input logic en_top,
 	input logic en_left,
-	input logic load_weight,
-	input logic signed [IA_WIDTH - 1 : 0] ia_in,
-	input logic signed [W_WIDTH - 1 : 0] w_in,
-	input logic signed [OA_WIDTH - 1 : 0] oa_in,
+	input logic load,
+	input logic signed [IA_WIDTH - 1 : 0] stream_in,
+	input logic signed [W_WIDTH - 1 : 0] load_in,
+	input logic signed [OA_WIDTH - 1 : 0] pe_in,
 
 	output logic en_right,
 	output logic en_bot,
-	output logic signed [IA_WIDTH - 1 : 0] ia_out,
-	output logic signed [OA_WIDTH - 1 : 0] oa_out
+	output logic signed [IA_WIDTH - 1 : 0] stream_out,
+	output logic signed [OA_WIDTH - 1 : 0] pe_out
 );
 
-logic signed [W_WIDTH - 1 : 0] weight;
+logic signed [W_WIDTH - 1 : 0] static_val;
 logic en;
 
 assign en = en_top | en_left;
 
 always_ff @(posedge clk) begin
 	if (!rst) begin
-		ia_out <= '0;
-		oa_out <= '0;
+		stream_out <= '0;
+		pe_out <= '0;
 	end else begin
 		en_right <= en;
 		en_bot <= en;
 		
-		if (load_weight)
-			weight <= w_in;
+		if (load)
+			static_val <= load_in;
 		
 		if (en) begin
-			ia_out <= ia_in;
-			oa_out <= oa_in + (ia_in * weight);
+			stream_out <= stream_in;
+			pe_out <= pe_in + (stream_in * static_val);
 		end
 	end
 end

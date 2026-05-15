@@ -7,6 +7,7 @@ module systolic #(
 	input clk,
 	input rst,
 	input start,
+	input logic [1 : 0] method,
 	input logic signed [IA_WIDTH - 1 : 0] ia_in [0 : N - 1][0 : N - 1],
 	input logic signed [W_WIDTH - 1 : 0] w_in [0 : N - 1][0 : N - 1],
 	
@@ -14,14 +15,17 @@ module systolic #(
 	output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : N - 1][0 : N - 1]
 );
 	
-	logic signed [IA_WIDTH - 1 : 0] ia_in_w [0 : N - 1][0 : N];
+	logic signed [IA_WIDTH - 1 : 0] stream_in_w [0 : N - 1][0 : N];
 	logic signed [IA_WIDTH - 1 : 0] ia_t [0 : N - 1][0 : N - 1];
-	logic signed [IA_WIDTH - 1:0] ia_buf_out [0 : N - 1];
-	logic signed [OA_WIDTH - 1:0] oa_w [0 : N][0 : N - 1];
+	logic signed [IA_WIDTH - 1:0] buf_in [0 : N - 1][0 : N - 1];
+	logic signed [IA_WIDTH - 1:0] load_in [0 : N - 1][0 : N - 1];
+	logic signed [IA_WIDTH - 1:0] buf_out [0 : N - 1];
+	logic signed [OA_WIDTH - 1:0] pe_w [0 : N][0 : N - 1];
 
 	logic en_h [0 : N - 1][0 : N];
 	logic en_v [0 : N][0 : N - 1];
 	logic [$clog2(2 * N + 1) : 0] cycles;
+	logic [1 : 0] dataflow;
 	logic fsm_en, load;
 
 	genvar i, j;
@@ -33,9 +37,12 @@ module systolic #(
 		.clk(clk),
 		.rst(rst),
 		.start(start),
+		.method(method),
+
 		.load(load),
 		.en(fsm_en),
-		.done(done)
+		.done(done),
+		.df(dataflow)
 	);
 
 	// top corner of array receives the FSM enable signal and sends it to other PEs
@@ -46,8 +53,8 @@ module systolic #(
 	// set starting partial OA to 0
 	generate
 		for(i = 0; i < N; i++) begin : init
-			assign ia_in_w[i][0] = ia_buf_out[i];
-			assign oa_w[0][i] = '0;
+			assign stream_in_w[i][0] = buf_out[i];
+			assign pe_w[0][i] = '0;
 		end : init
 	endgenerate
 
@@ -64,15 +71,15 @@ module systolic #(
 					.rst(rst),
 					.en_top(en_v[i][j]),
 					.en_left(en_h[i][j]),
-					.load_weight(load),
-					.ia_in(ia_in_w[i][j]),
-					.w_in(w_in[i][j]),
-					.oa_in(oa_w[i][j]),
+					.load(load),
+					.stream_in(stream_in_w[i][j]),
+					.load_in(load_in[i][j]),
+					.pe_in(pe_w[i][j]),
 
 					.en_right(en_h[i][j + 1]),
 					.en_bot(en_v[i + 1][j]),
-					.ia_out(ia_in_w[i][j + 1]),
-					.oa_out(oa_w[i + 1][j])
+					.stream_out(stream_in_w[i][j + 1]),
+					.pe_out(pe_w[i + 1][j])
 				);
 			end : pe_col
 		end : pe_row
@@ -87,23 +94,37 @@ module systolic #(
 		end : ia_t_r
 	endgenerate
 
+	// mux buffer inputs
+	generate
+		for(i = 0; i < N; i++) begin : mux_buf_in
+			assign buf_in[i] = (dataflow[1] == 1'b0) ? ((dataflow[0] == 1'b0) ? ia_t[i] : w_in[i]) : '{default: '0};
+		end : mux_buf_in
+	endgenerate
+
+	generate
+		for(i = 0; i < N; i++) begin : mux_load_vals
+			assign load_in[i] = (dataflow[1] == 1'b0) ? ((dataflow[0] == 1'b0) ? w_in[i] : ia_t[i]) : '{default: '0};
+		end : mux_load_vals
+	endgenerate
+
 	// instantiate ia_row_buffers connected with ripple carry enable signals
 	generate
-		for(i = 0; i < N; i++) begin : ia_bufs
-			ia_buf #(
+		for(i = 0; i < N; i++) begin : bufs
+			stream_buf #(
 				.N(N),
 				.WIDTH(IA_WIDTH)
-			) ia_row_buf (
+			) row_buf (
 				.clk(clk),
 				.rst(rst),
 				.en(en_v[i][0]),
 				.load(load),
-				.ia_in(ia_t[i]),
-				.buf_out(ia_buf_out[i])
+				.in(buf_in[i]),
+				.buf_out(buf_out[i])
 			);
-		end : ia_bufs
+		end : bufs
 	endgenerate
 
+	// cycle counter for writing
 	always_ff @(posedge clk) begin
 		if(fsm_en)
 			cycles <= cycles + 1'b1;
@@ -112,14 +133,26 @@ module systolic #(
 	end
 
 	// assign output weights
-	generate 
-		for(i = 0; i < N; i++) begin : out_row
-			for(j = 0; j < N; j++) begin : out_col
-				always_ff @(posedge clk) begin
-					if(cycles == (i + j + N + 1))
-						oa_out[i][j] <= oa_w[N][j];
+	always_ff @(posedge clk) begin
+		for(int i = 0; i < N; i++) begin : out_row
+			for(int j = 0; j < N; j++) begin : out_col
+				if(cycles == (i + j + N + 1)) begin
+					unique case(method)
+						2'b00 : begin
+								oa_out[i][j] <= pe_w[N][j];
+						end 
+						2'b01 : begin
+								oa_out[j][i] <= pe_w[N][j];
+						end 
+						2'b10 : begin
+
+						end 
+						2'b11 : begin 
+
+						end
+					endcase
 				end
 			end : out_col
 		end : out_row
-	endgenerate
+	end
 endmodule

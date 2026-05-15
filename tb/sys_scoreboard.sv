@@ -25,16 +25,26 @@ class sys_scoreboard extends uvm_component;
         for (int i = 0; i < N; i++) begin
             for (int j = 0; j < N; j++) begin
                 if (act_item.act[i][j] !== exp_item.exp[i][j]) begin
+                    /*
                     `uvm_error("MISMATCH", $sformatf("C[%0d][%0d] mismatch: expected = %0d actual = %0d",
                                   i, j,
                                   exp_item.exp[i][j],
                                   act_item.act[i][j]))
+                    */
                     errors++;
                 end
             end
         end
-        if (!errors) begin
-            `uvm_info("PASS", "Matrix multiply result matched expected output", UVM_LOW)
+        if (errors) begin
+            $write("Actual:\n");
+            for(int i = 0; i < N; i++) begin
+                for(int j = 0; j < N; j++) begin
+                    $write("%d ", act_item.act[i][j]);
+                end
+                $write("\n");
+            end
+        end else begin
+            `uvm_info("PASS", "Matrix multiply result matched expected output", UVM_LOW)     
         end
     endfunction
 
