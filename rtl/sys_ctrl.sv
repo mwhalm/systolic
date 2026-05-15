@@ -16,6 +16,7 @@ module sys_ctrl #(
 		CHOOSE,
 		LOAD,
 		COMPUTE,
+		DRAIN,
 		DONE
 	} state_t;
 	
@@ -31,7 +32,7 @@ module sys_ctrl #(
 	state_t state, next;
 	mode df_next, df_reg; 
 
-	logic [$clog2(2 * N): 0] count;
+	logic [$clog2(2 * N): 0] count, drain;
 
 	assign load = (state == LOAD);
 	assign en = (state == COMPUTE);
@@ -42,10 +43,12 @@ module sys_ctrl #(
 		if(!rst) begin
 			state <= IDLE;
 			count <= '0;
+			drain <= '0;
 			df_reg <= WS;
 		end else begin
 			state <= next;
 			count <= (state == COMPUTE) ? count + 1'b1 : '0;
+			drain <= (state == DRAIN) ? drain + 1'b1 : '0;
 			df_reg <= df_next;
 		end
 	end
@@ -81,6 +84,10 @@ module sys_ctrl #(
 			end 
 			COMPUTE: begin
 				if(count == COMPUTE_CYCLES)
+					next = DRAIN;
+			end
+			DRAIN: begin
+				if(drain == N)
 					next = DONE;
 			end
 			DONE: begin

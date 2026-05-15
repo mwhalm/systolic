@@ -49,33 +49,35 @@ class sys_driver extends uvm_driver #(sys_item);
 
     task drive_item(sys_item item);
         logic [1 : 0] dataflows [0 : 3];
-        int m = 1;
+        int i, j, m = 2;
 
-        for (int i = 0; i < 4; i++) begin
+        for (i = 0; i < 4; i++) begin
             dataflows[i] = i;
         end
 
         `uvm_info("DRV", "Driving systolic array", UVM_MEDIUM)
 
-        for (int i = 0; i < N; i++) begin
-            for (int j = 0; j < N; j++) begin
+        for (i = 0; i < N; i++) begin
+            for (j = 0; j < N; j++) begin
                 vif.ia_in[i][j] <= item.ia[i][j];
                 vif.w_in[i][j]  <= item.w[i][j];
             end
         end
 
-        `uvm_info("DRV", $sformatf("Dataflow = %b", dataflows[1]), UVM_MEDIUM)
-        drv_port.write(item);
-        @(posedge vif.clk);
-        vif.start <= 1'b1;
-        vif.method <= dataflows[1];
-        @(posedge vif.clk);
-        vif.start <= 1'b0;
-        @(posedge vif.clk);
-        @(posedge vif.clk);
-        wait (vif.done === 1'b1);
-        @(posedge vif.clk);
-        @(posedge vif.clk);
+        for(i = 0; i < m; i++) begin
+            `uvm_info("DRV", $sformatf("Dataflow = %b", dataflows[i]), UVM_MEDIUM)
+            drv_port.write(item);
+            @(posedge vif.clk);
+            vif.start <= 1'b1;
+            vif.method <= dataflows[i];
+            @(posedge vif.clk);
+            vif.start <= 1'b0;
+            @(posedge vif.clk);
+            @(posedge vif.clk);
+            wait (vif.done === 1'b1);
+            @(posedge vif.clk);
+            @(posedge vif.clk);
+        end
     `uvm_info("DRV", "Finished driving matrix multiply", UVM_MEDIUM)
     endtask
 endclass
