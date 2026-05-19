@@ -13,6 +13,8 @@ module stream_buf #(
 
 logic signed [WIDTH - 1 : 0] mem [0 : N - 1];
 
+assign buf_out = mem[0];
+
 always_ff @(posedge clk) begin
 	if(!rst) begin
 		for(int i = 0; i < N; i++) begin
@@ -25,7 +27,6 @@ always_ff @(posedge clk) begin
 			end
 		end
 		if(en) begin
-			buf_out <= mem[0];
 			for(int i = 0; i < N - 1; i++) begin
 				mem[i] <= mem[i + 1];
 			end	

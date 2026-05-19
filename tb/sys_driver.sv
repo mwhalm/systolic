@@ -49,13 +49,11 @@ class sys_driver extends uvm_driver #(sys_item);
 
     task drive_item(sys_item item);
         logic [1 : 0] dataflows [0 : 3];
-        int i, j, m = 2;
+        int i, j, m = 3;
 
         for (i = 0; i < 4; i++) begin
             dataflows[i] = i;
         end
-
-        `uvm_info("DRV", "Driving systolic array", UVM_MEDIUM)
 
         for (i = 0; i < N; i++) begin
             for (j = 0; j < N; j++) begin
@@ -65,6 +63,7 @@ class sys_driver extends uvm_driver #(sys_item);
         end
 
         for(i = 0; i < m; i++) begin
+            `uvm_info("DRV", "Driving systolic array", UVM_MEDIUM)
             `uvm_info("DRV", $sformatf("Dataflow = %b", dataflows[i]), UVM_MEDIUM)
             drv_port.write(item);
             @(posedge vif.clk);

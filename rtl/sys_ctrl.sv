@@ -63,6 +63,7 @@ module sys_ctrl #(
 					next = CHOOSE;
 			end
 			CHOOSE: begin
+				next = LOAD;
 				case (method)
 					WS : begin
 						df_next = WS;
@@ -77,7 +78,6 @@ module sys_ctrl #(
 						df_next = RS;
 					end
 				endcase
-				next = LOAD;
 			end
 			LOAD: begin
 				next = COMPUTE;

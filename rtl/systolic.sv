@@ -15,11 +15,14 @@ module systolic #(
 	output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : N - 1][0 : N - 1]
 );
 	
-	logic signed [IA_WIDTH - 1 : 0] stream_in_w [0 : N - 1][0 : N];
+	logic signed [IA_WIDTH - 1 : 0] row_w [0 : N - 1][0 : N];
+	logic signed [W_WIDTH - 1 : 0] col_w [0 : N][0 : N - 1];
 	logic signed [IA_WIDTH - 1 : 0] ia_t [0 : N - 1][0 : N - 1];
+	logic signed [W_WIDTH - 1 : 0] w_t [0 : N - 1][0 : N - 1];
 	logic signed [IA_WIDTH - 1:0] buf_in [0 : N - 1][0 : N - 1];
 	logic signed [IA_WIDTH - 1:0] load_in [0 : N - 1][0 : N - 1];
-	logic signed [IA_WIDTH - 1:0] buf_out [0 : N - 1];
+	logic signed [IA_WIDTH - 1:0] row_buf_out [0 : N - 1];
+	logic signed [W_WIDTH - 1:0] col_buf_out [0 : N - 1];
 	logic signed [OA_WIDTH - 1:0] pe_w [0 : N][0 : N - 1];
 
 	logic en_h [0 : N - 1][0 : N];
@@ -30,7 +33,7 @@ module systolic #(
 
 	genvar i, j;
 
-	// instantiate systolic array controller
+	// systolic array controller
 	sys_ctrl #(
 		.N(N)
 	) fsm_ctrl (
@@ -53,7 +56,8 @@ module systolic #(
 	// set starting partial OA to 0
 	generate
 		for(i = 0; i < N; i++) begin : init
-			assign stream_in_w[i][0] = buf_out[i];
+			assign row_w[i][0] = row_buf_out[i];
+			assign col_w[0][i] = col_buf_out[i];
 			assign pe_w[0][i] = '0;
 		end : init
 	endgenerate
@@ -72,24 +76,28 @@ module systolic #(
 					.en_top(en_v[i][j]),
 					.en_left(en_h[i][j]),
 					.load(load),
-					.stream_in(stream_in_w[i][j]),
-					.load_in(load_in[i][j]),
+					.dataflow(dataflow),
+					.row_in(row_w[i][j]),
+					.col_in(col_w[i][j]),
+					.load_val(load_in[i][j]),
 					.pe_in(pe_w[i][j]),
 
 					.en_right(en_h[i][j + 1]),
 					.en_bot(en_v[i + 1][j]),
-					.stream_out(stream_in_w[i][j + 1]),
+					.row_out(row_w[i][j + 1]),
+					.col_out(col_w[i + 1][j]),
 					.pe_out(pe_w[i + 1][j])
 				);
 			end : pe_col
 		end : pe_row
 	endgenerate
 
-	// transpose input matrix
+	// transpose matrices
 	generate
 		for(i = 0; i < N; i++) begin : ia_t_r
 			for(j = 0; j < N; j++) begin : ia_t_c
 				assign ia_t[i][j] = ia_in[j][i];
+				assign w_t[i][j] = w_in[j][i];
 			end : ia_t_c
 		end : ia_t_r
 	endgenerate
@@ -97,19 +105,20 @@ module systolic #(
 	// mux buffer inputs
 	generate
 		for(i = 0; i < N; i++) begin : mux_buf_in
-			assign buf_in[i] = (dataflow[1] == 1'b0) ? ((dataflow[0] == 1'b0) ? ia_t[i] : w_in[i]) : '{default: '0};
+			assign buf_in[i] = (dataflow[1] == 1'b0) ? ((dataflow[0] == 1'b0) ? ia_t[i] : w_in[i]) : ia_in[i];
 		end : mux_buf_in
 	endgenerate
 
+	// mux static load value (weight and input stationary)
 	generate
 		for(i = 0; i < N; i++) begin : mux_load_vals
 			assign load_in[i] = (dataflow[1] == 1'b0) ? ((dataflow[0] == 1'b0) ? w_in[i] : ia_t[i]) : '{default: '0};
 		end : mux_load_vals
 	endgenerate
 
-	// instantiate ia_row_buffers connected with ripple carry enable signals
+	// row_buffers connected with ripple carry enable signals
 	generate
-		for(i = 0; i < N; i++) begin : bufs
+		for(i = 0; i < N; i++) begin : row_bufs
 			stream_buf #(
 				.N(N),
 				.WIDTH(IA_WIDTH)
@@ -119,9 +128,26 @@ module systolic #(
 				.en(en_v[i][0]),
 				.load(load),
 				.in(buf_in[i]),
-				.buf_out(buf_out[i])
+				.buf_out(row_buf_out[i])
 			);
-		end : bufs
+		end : row_bufs
+	endgenerate
+
+	// col_buffers connected with ripple carry enable signals
+	generate
+		for(i = 0; i < N; i++) begin : col_bufs
+			stream_buf #(
+				.N(N),
+				.WIDTH(W_WIDTH)
+			) col_buf (
+				.clk(clk),
+				.rst(rst),
+				.en(en_h[0][i]),
+				.load(load),
+				.in(w_t[i]),
+				.buf_out(col_buf_out[i])
+			);
+		end : col_bufs
 	endgenerate
 
 	// cycle counter for writing
@@ -132,20 +158,20 @@ module systolic #(
 			cycles <= '0;
 	end
 
-	// assign output weights
+	// write output values
 	always_ff @(posedge clk) begin
 		for(int i = 0; i < N; i++) begin : out_row
 			for(int j = 0; j < N; j++) begin : out_col
-				if(cycles == (i + j + N + 1)) begin
+				if(cycles == (i + j + N)) begin
 					unique case(method)
 						2'b00 : begin
-								oa_out[i][j] <= pe_w[N][j];
+							oa_out[i][j] <= pe_w[N][j];
 						end 
 						2'b01 : begin
-								oa_out[j][i] <= pe_w[N][j];
+							oa_out[j][i] <= pe_w[N][j];
 						end 
 						2'b10 : begin
-
+							oa_out[i][j] <= pe_w[i + 1][j];
 						end 
 						2'b11 : begin 
 
