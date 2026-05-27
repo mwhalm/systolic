@@ -1,5 +1,4 @@
 module tb_top;
-
     import uvm_pkg::*;
     import sys_pkg::*;
 
@@ -8,7 +7,9 @@ module tb_top;
     always #5 clk = ~clk;
 
     systolic_if #(
-        .N(N),
+        .M_SIZE(M_SIZE),
+        .K_SIZE(K_SIZE),
+        .N_SIZE(N_SIZE),
         .IA_WIDTH(IA_WIDTH),
         .W_WIDTH(W_WIDTH),
         .OA_WIDTH(OA_WIDTH)
@@ -16,8 +17,11 @@ module tb_top;
         .clk(clk)
     );
 
-    systolic #(
-        .N(N),
+    tile #(
+        .M(M_SIZE),
+        .K(K_SIZE),
+        .N(N_SIZE),
+        .TILE_SIZE(N),
         .IA_WIDTH(IA_WIDTH),
         .W_WIDTH(W_WIDTH),
         .OA_WIDTH(OA_WIDTH)
@@ -37,11 +41,10 @@ module tb_top;
         $fsdbDumpfile("sys.fsdb");
         $fsdbDumpvars(0, tb_top);
         $fsdbDumpMDA(0, tb_top.dut);
-        uvm_config_db#(virtual systolic_if #(N, IA_WIDTH, W_WIDTH, OA_WIDTH).drv)::set(
+        uvm_config_db#(virtual systolic_if #(M_SIZE, K_SIZE, N_SIZE, IA_WIDTH, W_WIDTH, OA_WIDTH).drv)::set(
             null, "uvm_test_top.env.agent.driver", "vif", sif.drv);
-        uvm_config_db#(virtual systolic_if #(N, IA_WIDTH, W_WIDTH, OA_WIDTH).mon)::set(
+        uvm_config_db#(virtual systolic_if #(M_SIZE, K_SIZE, N_SIZE, IA_WIDTH, W_WIDTH, OA_WIDTH).mon)::set(
             null, "uvm_test_top.env.agent.monitor", "vif", sif.mon);
-
         run_test("sys_test");
     end
 

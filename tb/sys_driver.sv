@@ -1,7 +1,7 @@
 class sys_driver extends uvm_driver #(sys_item);
     `uvm_component_utils(sys_driver)
 
-    virtual systolic_if #(.N(N), .IA_WIDTH(IA_WIDTH), .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH)).drv vif;
+    virtual systolic_if #(.M_SIZE(M_SIZE), .K_SIZE(K_SIZE), .N_SIZE(N_SIZE), .IA_WIDTH(IA_WIDTH), .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH)).drv vif;
 
     uvm_analysis_port #(sys_item) drv_port;
 
@@ -12,7 +12,7 @@ class sys_driver extends uvm_driver #(sys_item);
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        if (!uvm_config_db#(virtual systolic_if #(.N(N), .IA_WIDTH(IA_WIDTH), .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH)).drv)::get(
+        if (!uvm_config_db#(virtual systolic_if #(.M_SIZE(M_SIZE), .K_SIZE(K_SIZE), .N_SIZE(N_SIZE), .IA_WIDTH(IA_WIDTH), .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH)).drv)::get(
                 this, "", "vif", vif
             )) begin
             `uvm_fatal("NOVIF", "Driver could not get virtual interface")
@@ -49,15 +49,19 @@ class sys_driver extends uvm_driver #(sys_item);
 
     task drive_item(sys_item item);
         logic [1 : 0] dataflows [0 : 3];
-        int i, j, m = 3;
+        int i, j, m = 1;
 
         for (i = 0; i < 4; i++) begin
             dataflows[i] = i;
         end
 
-        for (i = 0; i < N; i++) begin
-            for (j = 0; j < N; j++) begin
+        for (i = 0; i < M_SIZE; i++) begin
+            for (j = 0; j < K_SIZE; j++) begin
                 vif.ia_in[i][j] <= item.ia[i][j];
+            end
+        end
+        for (i = 0; i < K_SIZE; i++) begin
+            for (j = 0; j < N_SIZE; j++) begin
                 vif.w_in[i][j]  <= item.w[i][j];
             end
         end
@@ -66,9 +70,9 @@ class sys_driver extends uvm_driver #(sys_item);
             `uvm_info("DRV", "Driving systolic array", UVM_MEDIUM)
             `uvm_info("DRV", $sformatf("Dataflow = %b", dataflows[i]), UVM_MEDIUM)
             drv_port.write(item);
+            vif.method <= dataflows[i];
             @(posedge vif.clk);
             vif.start <= 1'b1;
-            vif.method <= dataflows[i];
             @(posedge vif.clk);
             vif.start <= 1'b0;
             @(posedge vif.clk);
@@ -77,6 +81,6 @@ class sys_driver extends uvm_driver #(sys_item);
             @(posedge vif.clk);
             @(posedge vif.clk);
         end
-    `uvm_info("DRV", "Finished driving matrix multiply", UVM_MEDIUM)
+        `uvm_info("DRV", "Finished driving matrix multiply", UVM_MEDIUM)
     endtask
 endclass

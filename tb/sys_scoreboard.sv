@@ -22,8 +22,8 @@ class sys_scoreboard extends uvm_component;
 
     function void compare(sys_item exp_item, sys_item act_item);
         int errors = 0;
-        for (int i = 0; i < N; i++) begin
-            for (int j = 0; j < N; j++) begin
+        for (int i = 0; i < M_SIZE; i++) begin
+            for (int j = 0; j < N_SIZE; j++) begin
                 if (act_item.act[i][j] !== exp_item.exp[i][j]) begin
                     errors++;
                 end
@@ -32,8 +32,8 @@ class sys_scoreboard extends uvm_component;
         if (errors) begin
             `uvm_error("MISMATCH", "Matrices don't match")
             $write("Actual:\n");
-            for(int i = 0; i < N; i++) begin
-                for(int j = 0; j < N; j++) begin
+            for(int i = 0; i < M_SIZE; i++) begin
+                for(int j = 0; j < N_SIZE; j++) begin
                     $write("%d ", act_item.act[i][j]);
                 end
                 $write("\n");

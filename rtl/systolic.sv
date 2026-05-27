@@ -153,7 +153,7 @@ module systolic #(
 	// cycle counter for writing
 	always_ff @(posedge clk) begin
 		if(fsm_en)
-			cycles <= cycles + 1'b1;
+			cycles <= fsm_en ? cycles + 1'b1 : '0;
 		else
 			cycles <= '0;
 	end
