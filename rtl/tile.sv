@@ -29,7 +29,7 @@ module tile #(
     logic signed [W_WIDTH - 1 : 0] w_tile [0: TILE_SIZE - 1][0 : TILE_SIZE - 1];
     logic signed [OA_WIDTH - 1 : 0] oa_tile [0 : TILE_SIZE - 1][0 : TILE_SIZE - 1];
 
-    logic load_tile, sys_start, sys_done, accumulate;
+    logic load_tile, sys_start, sys_done, accumulate, clear_acc, idle;
 
     logic [M_WIDTH - 1: 0] tile_i;
     logic [N_WIDTH - 1: 0] tile_j;
@@ -54,7 +54,7 @@ module tile #(
         .sys_start(sys_start),
         .accumulate(accumulate),
         .done(done),
-
+        .idle(idle),
         .tile_i(tile_i),
         .tile_j(tile_j),
         .tile_k(tile_k)
@@ -69,7 +69,6 @@ module tile #(
         .clk(clk),
         .rst(rst),
         .start(sys_start),
-
         .method(method),
 
         .ia_in(ia_tile),
@@ -107,7 +106,7 @@ module tile #(
 
     // Output Accumulation
     always_ff @(posedge clk) begin
-        if(!rst) begin
+        if(!rst || idle) begin
             for(int i = 0; i < M; i++) begin
                 for(int j = 0; j < N; j++) begin
                     oa_out[i][j] <= '0;
@@ -116,8 +115,9 @@ module tile #(
         end else if(accumulate) begin
             for(int i = 0; i < TILE_SIZE; i++) begin
                 for(int j = 0; j < TILE_SIZE; j++) begin
-                    if(tile_i * TILE_SIZE + i < M && tile_j * TILE_SIZE + j < N)
+                    if(tile_i * TILE_SIZE + i < M && tile_j * TILE_SIZE + j < N) begin
                         oa_out[tile_i * TILE_SIZE + i][tile_j * TILE_SIZE + j] <= oa_out[tile_i * TILE_SIZE + i][tile_j * TILE_SIZE + j] + oa_tile[i][j];
+                    end
                 end
             end
         end

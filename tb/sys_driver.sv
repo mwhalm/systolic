@@ -49,7 +49,7 @@ class sys_driver extends uvm_driver #(sys_item);
 
     task drive_item(sys_item item);
         logic [1 : 0] dataflows [0 : 3];
-        int i, j, m = 1;
+        int i, j, m = 3;
 
         for (i = 0; i < 4; i++) begin
             dataflows[i] = i;

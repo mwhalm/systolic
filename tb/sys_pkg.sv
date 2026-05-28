@@ -4,12 +4,12 @@ package sys_pkg;
     parameter int M_SIZE = `M_SIZE;
     parameter int K_SIZE = `K_SIZE;
     parameter int N_SIZE = `N_SIZE;
-    parameter int N = 4;
+    parameter int N = `TILE_SIZE;
     parameter int IA_WIDTH  = 8;
     parameter int W_WIDTH   = 8;
     parameter int OA_WIDTH = 2 * IA_WIDTH + N;
 
-    typedef enum logic [0:0] {
+    typedef enum logic {
         OP_MM   = 1'b0,
         OP_CONV = 1'b1
     } sys_op;

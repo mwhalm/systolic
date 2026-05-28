@@ -10,14 +10,13 @@ module tile_ctrl #(
     input  logic clk,
     input  logic rst,
     input  logic start,
-
     input  logic sys_done,
 
     output logic load_tile,
     output logic sys_start,
     output logic accumulate,
     output logic done,
-
+    output logic idle,
     output logic [M_WIDTH - 1: 0] tile_i,
     output logic [N_WIDTH - 1: 0] tile_j,
     output logic [K_WIDTH - 1: 0] tile_k
@@ -34,6 +33,8 @@ module tile_ctrl #(
     } state_t;
 
     state_t state;
+
+    assign idle = (state == IDLE); 
 
     always_ff @(posedge clk) begin
         if(!rst) begin
@@ -85,17 +86,13 @@ module tile_ctrl #(
                     end
                     else begin
                         tile_k <= 0;
-
-                        // column tile
-                        if(tile_j < N_TILES - 1) begin
+                        if(tile_j < N_TILES - 1) begin // column tile
                             tile_j <= tile_j + 1'b1;
                             state <= LOAD;
                         end
                         else begin
                             tile_j <= 0;
-
-                            // row tile
-                            if(tile_i < M_TILES - 1) begin
+                            if(tile_i < M_TILES - 1) begin // row tile
                                 tile_i <= tile_i + 1'b1;
                                 state <= LOAD;
                             end

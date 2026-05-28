@@ -82,6 +82,7 @@ module systolic #(
 					.load_val(load_in[i][j]),
 					.pe_in(pe_w[i][j]),
 
+
 					.en_right(en_h[i][j + 1]),
 					.en_bot(en_v[i + 1][j]),
 					.row_out(row_w[i][j + 1]),
