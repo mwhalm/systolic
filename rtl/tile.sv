@@ -5,7 +5,9 @@ module tile #(
     parameter TILE_SIZE = 8,
     parameter IA_WIDTH = 8,
     parameter W_WIDTH = 8,
-    parameter OA_WIDTH = 24
+    parameter OA_WIDTH = 24,
+    parameter FILTER_SIZE = 8,
+    parameter CONV_IA_ROW_SIZE = 16
 )(
     input logic clk,
     input logic rst,
@@ -13,6 +15,8 @@ module tile #(
     input logic [1 : 0] method,
     input logic signed [IA_WIDTH - 1: 0] ia_in [0 : M - 1][0 : K - 1],
     input logic signed [W_WIDTH - 1: 0] w_in [0 : K - 1][0 : N - 1],
+	input logic signed [IA_WIDTH - 1 : 0] conv_ia_in [0 : CONV_IA_ROW_SIZE - 1][0 : CONV_IA_ROW_SIZE - 1],
+	input logic signed [W_WIDTH - 1 : 0] filter_in [0 : FILTER_SIZE - 1][0 : FILTER_SIZE - 1],
 
     output logic done,
     output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : M - 1][0 : N - 1]
@@ -49,7 +53,6 @@ module tile #(
         .start(start),
 
         .sys_done(sys_done),
-
         .load_tile(load_tile),
         .sys_start(sys_start),
         .accumulate(accumulate),
@@ -64,15 +67,18 @@ module tile #(
         .N(TILE_SIZE),
         .IA_WIDTH(IA_WIDTH),
         .W_WIDTH(W_WIDTH),
-        .OA_WIDTH(OA_WIDTH)
+        .OA_WIDTH(OA_WIDTH),
+        .FILTER_SIZE(FILTER_SIZE),
+        .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE)
     ) systolic_array (
         .clk(clk),
         .rst(rst),
         .start(sys_start),
         .method(method),
-
         .ia_in(ia_tile),
         .w_in(w_tile),
+        .conv_ia_in(conv_ia_in),
+        .filter_in(filter_in),
 
         .done(sys_done),
         .oa_out(oa_tile)

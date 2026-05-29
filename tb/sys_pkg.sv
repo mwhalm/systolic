@@ -8,6 +8,16 @@ package sys_pkg;
     parameter int IA_WIDTH  = 8;
     parameter int W_WIDTH   = 8;
     parameter int OA_WIDTH = 2 * IA_WIDTH + N;
+    parameter int CONV_IA_ROW_SIZE = 3;
+    parameter int FILTER_SIZE = 2;
+	parameter int H = 3;
+    parameter int W = 3;
+    parameter int R = 2;
+    parameter int S = 2;
+    parameter int P = H - R + 1;
+    parameter int Q = W - S + 1;
+    parameter int X = R * S;      
+    parameter int Z = P * Q;
 
     typedef enum logic {
         OP_MM   = 1'b0,

@@ -2,7 +2,9 @@ module systolic #(
 	parameter N = 8,
 	parameter IA_WIDTH = 8,
 	parameter W_WIDTH = 8,
-	parameter OA_WIDTH = 24
+	parameter OA_WIDTH = 24,
+	parameter CONV_IA_ROW_SIZE = 16,
+	parameter FILTER_SIZE = 8
 )(
 	input clk,
 	input rst,
@@ -10,7 +12,9 @@ module systolic #(
 	input logic [1 : 0] method,
 	input logic signed [IA_WIDTH - 1 : 0] ia_in [0 : N - 1][0 : N - 1],
 	input logic signed [W_WIDTH - 1 : 0] w_in [0 : N - 1][0 : N - 1],
-	
+	input logic signed [IA_WIDTH - 1 : 0] conv_ia_in [0 : CONV_IA_ROW_SIZE - 1][0 : CONV_IA_ROW_SIZE - 1],
+	input logic signed [W_WIDTH - 1 : 0] filter_in [0 : FILTER_SIZE - 1][0 : FILTER_SIZE - 1],
+
 	output done,
 	output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : N - 1][0 : N - 1]
 );
@@ -69,7 +73,9 @@ module systolic #(
 				pe #(
 					.IA_WIDTH(IA_WIDTH),
 					.W_WIDTH(W_WIDTH),
-					.OA_WIDTH(OA_WIDTH)
+					.OA_WIDTH(OA_WIDTH),
+					.CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE),
+					.FILTER_SIZE(FILTER_SIZE)
 				) pe_block (
 					.clk(clk),
 					.rst(rst),
@@ -77,11 +83,12 @@ module systolic #(
 					.en_left(en_h[i][j]),
 					.load(load),
 					.dataflow(dataflow),
+					.filter_row_in(filter_in[i]),
+					.conv_row_in(conv_ia_in[i + j]),
 					.row_in(row_w[i][j]),
 					.col_in(col_w[i][j]),
 					.load_val(load_in[i][j]),
 					.pe_in(pe_w[i][j]),
-
 
 					.en_right(en_h[i][j + 1]),
 					.en_bot(en_v[i + 1][j]),
@@ -153,10 +160,7 @@ module systolic #(
 
 	// cycle counter for writing
 	always_ff @(posedge clk) begin
-		if(fsm_en)
-			cycles <= fsm_en ? cycles + 1'b1 : '0;
-		else
-			cycles <= '0;
+		cycles <= fsm_en ? cycles + 1'b1 : '0;
 	end
 
 	// write output values
@@ -175,7 +179,7 @@ module systolic #(
 							oa_out[i][j] <= pe_w[i + 1][j];
 						end 
 						2'b11 : begin 
-
+							oa_out[j][i] <= pe_w[N][j];
 						end
 					endcase
 				end

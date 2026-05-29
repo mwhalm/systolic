@@ -1,7 +1,8 @@
 class sys_driver extends uvm_driver #(sys_item);
     `uvm_component_utils(sys_driver)
 
-    virtual systolic_if #(.M_SIZE(M_SIZE), .K_SIZE(K_SIZE), .N_SIZE(N_SIZE), .IA_WIDTH(IA_WIDTH), .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH)).drv vif;
+    virtual systolic_if #(.M_SIZE(M_SIZE), .K_SIZE(K_SIZE), .N_SIZE(N_SIZE), .IA_WIDTH(IA_WIDTH),
+     .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH),  .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE), .FILTER_SIZE(FILTER_SIZE)).drv vif;
 
     uvm_analysis_port #(sys_item) drv_port;
 
@@ -12,7 +13,8 @@ class sys_driver extends uvm_driver #(sys_item);
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        if (!uvm_config_db#(virtual systolic_if #(.M_SIZE(M_SIZE), .K_SIZE(K_SIZE), .N_SIZE(N_SIZE), .IA_WIDTH(IA_WIDTH), .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH)).drv)::get(
+        if (!uvm_config_db#(virtual systolic_if #(.M_SIZE(M_SIZE), .K_SIZE(K_SIZE), .N_SIZE(N_SIZE), .IA_WIDTH(IA_WIDTH), 
+        .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH), .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE), .FILTER_SIZE(FILTER_SIZE)).drv)::get(
                 this, "", "vif", vif
             )) begin
             `uvm_fatal("NOVIF", "Driver could not get virtual interface")
@@ -48,26 +50,60 @@ class sys_driver extends uvm_driver #(sys_item);
     endtask
 
     task drive_item(sys_item item);
-        logic [1 : 0] dataflows [0 : 3];
-        int i, j, m = 3;
+        if(item.operation == OP_MM)
+            drive_mm(item);
+        else
+            drive_conv(item);
+    endtask
 
-        for (i = 0; i < 4; i++) begin
+    task drive_conv(sys_item item);
+        for (int i = 0; i < CONV_IA_ROW_SIZE; i++) begin
+            for (int j = 0; j < CONV_IA_ROW_SIZE; j++) begin
+                vif.conv_ia_in[i][j] <= item.conv_ia[i][j];
+            end
+        end
+        for (int i = 0; i < FILTER_SIZE; i++) begin
+            for (int j = 0; j < FILTER_SIZE; j++) begin
+                vif.filter_in[i][j]  <= item.filter[i][j];
+            end
+        end
+
+        `uvm_info("DRV", "Driving Convolution", UVM_MEDIUM)
+        drv_port.write(item);
+        vif.method <= 2'b11; // choose row stationary
+        @(posedge vif.clk);
+        vif.start <= 1'b1;
+        @(posedge vif.clk);
+        vif.start <= 1'b0;
+        @(posedge vif.clk);
+        @(posedge vif.clk);
+        wait (vif.done === 1'b1);
+        @(posedge vif.clk);
+        @(posedge vif.clk);
+        `uvm_info("DRV", "Finished driving convolution", UVM_MEDIUM)
+    endtask
+
+    task drive_mm(sys_item item);
+        logic [1 : 0] dataflows [0 : 3];
+        int m = 3;
+
+        for (int i = 0; i < 3; i++) begin
             dataflows[i] = i;
         end
 
-        for (i = 0; i < M_SIZE; i++) begin
-            for (j = 0; j < K_SIZE; j++) begin
+        for (int i = 0; i < M_SIZE; i++) begin
+            for (int j = 0; j < K_SIZE; j++) begin
                 vif.ia_in[i][j] <= item.ia[i][j];
             end
         end
-        for (i = 0; i < K_SIZE; i++) begin
-            for (j = 0; j < N_SIZE; j++) begin
+        for (int i = 0; i < K_SIZE; i++) begin
+            for (int j = 0; j < N_SIZE; j++) begin
                 vif.w_in[i][j]  <= item.w[i][j];
             end
         end
 
-        for(i = 0; i < m; i++) begin
-            `uvm_info("DRV", "Driving systolic array", UVM_MEDIUM)
+        for(int i = 0; i < m; i++) begin
+            `uvm_info("DRV", "Driving Matrix Multiply", UVM_MEDIUM)
             `uvm_info("DRV", $sformatf("Dataflow = %b", dataflows[i]), UVM_MEDIUM)
             drv_port.write(item);
             vif.method <= dataflows[i];
