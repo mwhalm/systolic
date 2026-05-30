@@ -36,7 +36,7 @@ class sys_item extends uvm_sequence_item;
 	}
 
 	constraint op_dist {
-    	operation dist {OP_MM := 1, OP_CONV := 99};
+    	operation dist {OP_MM := 0, OP_CONV := 100};
 	}
 
 	function void post_randomize();

@@ -40,11 +40,11 @@ class sys_scoreboard extends uvm_component;
                     $write("\n");
                 end
             end else begin
-                `uvm_info("PASS", "Convolution result matched expected output", UVM_LOW)     
+                `uvm_info("PASS", "Matrix multiply result matched expected output", UVM_LOW)    
             end
         end else begin
-            for (int i = 0; i < M_SIZE; i++) begin
-                for (int j = 0; j < N_SIZE; j++) begin
+            for (int i = 0; i < P; i++) begin
+                for (int j = 0; j < Q; j++) begin
                     if (act_item.conv_act[i][j] !== exp_item.conv_exp[i][j]) begin
                         errors++;
                     end
@@ -60,7 +60,7 @@ class sys_scoreboard extends uvm_component;
                     $write("\n");
                 end
             end else begin
-                `uvm_info("PASS", "Matrix multiply result matched expected output", UVM_LOW)     
+                `uvm_info("PASS", "Convolution result matched expected output", UVM_LOW)     
             end
         end
     endfunction

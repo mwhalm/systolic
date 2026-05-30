@@ -104,9 +104,9 @@ class sys_driver extends uvm_driver #(sys_item);
 
         for(int i = 0; i < m; i++) begin
             `uvm_info("DRV", "Driving Matrix Multiply", UVM_MEDIUM)
-            `uvm_info("DRV", $sformatf("Dataflow = %b", dataflows[i]), UVM_MEDIUM)
+            `uvm_info("DRV", $sformatf("Dataflow = %b", dataflows[2]), UVM_MEDIUM)
             drv_port.write(item);
-            vif.method <= dataflows[i];
+            vif.method <= dataflows[2];
             @(posedge vif.clk);
             vif.start <= 1'b1;
             @(posedge vif.clk);

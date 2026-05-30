@@ -4,7 +4,9 @@ module systolic #(
 	parameter W_WIDTH = 8,
 	parameter OA_WIDTH = 24,
 	parameter CONV_IA_ROW_SIZE = 16,
-	parameter FILTER_SIZE = 8
+	parameter FILTER_SIZE = 8,
+	parameter CONV_TILE_SIZE,
+	parameter CONV_OUT_SIZE = CONV_IA_ROW_SIZE - FILTER_SIZE + 1
 )(
 	input clk,
 	input rst,
@@ -12,13 +14,19 @@ module systolic #(
 	input logic [1 : 0] method,
 	input logic signed [IA_WIDTH - 1 : 0] ia_in [0 : N - 1][0 : N - 1],
 	input logic signed [W_WIDTH - 1 : 0] w_in [0 : N - 1][0 : N - 1],
-	input logic signed [IA_WIDTH - 1 : 0] conv_ia_in [0 : CONV_IA_ROW_SIZE - 1][0 : CONV_IA_ROW_SIZE - 1],
+	input logic signed [IA_WIDTH - 1 : 0] conv_ia_in [0 : CONV_TILE_SIZE][0 : CONV_IA_ROW_SIZE - 1],
 	input logic signed [W_WIDTH - 1 : 0] filter_in [0 : FILTER_SIZE - 1][0 : FILTER_SIZE - 1],
 
 	output done,
-	output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : N - 1][0 : N - 1]
+	output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : N - 1][0 : N - 1],
+	output logic signed [OA_WIDTH - 1 : 0] conv_out [0 : N - 1][0 : CONV_OUT_SIZE]
 );
 	
+	localparam WS = 2'b00;
+	localparam IS = 2'b01;
+	localparam OS = 2'b10;
+	localparam RS = 2'b11;
+
 	logic signed [IA_WIDTH - 1 : 0] row_w [0 : N - 1][0 : N];
 	logic signed [W_WIDTH - 1 : 0] col_w [0 : N][0 : N - 1];
 	logic signed [IA_WIDTH - 1 : 0] ia_t [0 : N - 1][0 : N - 1];
@@ -165,25 +173,26 @@ module systolic #(
 
 	// write output values
 	always_ff @(posedge clk) begin
-		for(int i = 0; i < N; i++) begin : out_row
-			for(int j = 0; j < N; j++) begin : out_col
-				if(cycles == (i + j + N)) begin
-					unique case(method)
-						2'b00 : begin
-							oa_out[i][j] <= pe_w[N][j];
-						end 
-						2'b01 : begin
-							oa_out[j][i] <= pe_w[N][j];
-						end 
-						2'b10 : begin
-							oa_out[i][j] <= pe_w[i + 1][j];
-						end 
-						2'b11 : begin 
-							oa_out[j][i] <= pe_w[N][j];
-						end
-					endcase
+		if(method != RS) begin
+			for(int i = 0; i < N; i++) begin : out_row
+				for(int j = 0; j < N; j++) begin : out_col
+					if(cycles == (i + j + N)) begin
+						unique case(method)
+							WS : oa_out[i][j] <= pe_w[N][j];
+							IS : oa_out[j][i] <= pe_w[N][j];
+							OS : oa_out[i][j] <= pe_w[i + 1][j];
+							default : oa_out[i][j] <= 'x;
+						endcase
+					end
+				end : out_col
+			end : out_row
+		end else begin
+			for(int i = 0; i < N; i++) begin
+				for(int j = 0; j < CONV_OUT_SIZE; j++) begin
+					if(cycles == (i + j + N))
+						conv_out[j][i] <= pe_w[N][j];
 				end
-			end : out_col
-		end : out_row
+			end
+		end
 	end
 endmodule

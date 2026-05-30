@@ -65,6 +65,7 @@ module pe #(
 				pe_out <= '0;
 			else if (load && rs) begin
 				pe_out <= '0;
+				index <= '0;
 				for(int i = 0; i < FILTER_SIZE; ++i) begin
 					filter_row[i] <= filter_row_in[i];
 				end
@@ -73,10 +74,16 @@ module pe #(
 			if(en) begin
 				row_out <= row_in;
 				unique case(dataflow)
-					WS, IS : pe_out <= pe_in + row_in * static_val;
+					WS, IS : begin
+						if(row_in != '0 && static_val != '0)
+							pe_out <= pe_in + row_in * static_val;
+						else
+							pe_out <= pe_in;
+					end 
 					OS : begin
 						col_out <= col_in;
-						pe_out <= pe_out + row_in * col_in;
+						if(row_in != '0 && col_in != '0)
+							pe_out <= pe_out + row_in * col_in;
 					end
 					RS : begin
 						pe_out <= rs_sum + pe_in;
