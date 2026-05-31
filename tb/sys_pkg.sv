@@ -1,15 +1,16 @@
 package sys_pkg;
     import uvm_pkg::*;
     `include "uvm_macros.svh"
-    parameter int M_SIZE = `M_SIZE;
-    parameter int K_SIZE = `K_SIZE;
-    parameter int N_SIZE = `N_SIZE;
-    parameter int N = `TILE_SIZE;
+    parameter int M_SIZE = 2;
+    parameter int K_SIZE = 2;
+    parameter int N_SIZE = 2;
+    parameter int N = 2;
     parameter int IA_WIDTH  = 8;
     parameter int W_WIDTH   = 8;
     parameter int OA_WIDTH = 2 * IA_WIDTH + N;
-    parameter int CONV_IA_ROW_SIZE = 5;
+    parameter int CONV_IA_ROW_SIZE = 6;
     parameter int FILTER_SIZE = 2;
+    parameter int CONV_OUT_SIZE = CONV_IA_ROW_SIZE - FILTER_SIZE + 1;
 	parameter int H = CONV_IA_ROW_SIZE;
     parameter int W = CONV_IA_ROW_SIZE;
     parameter int R = FILTER_SIZE;

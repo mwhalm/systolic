@@ -19,7 +19,7 @@ module systolic #(
 
 	output done,
 	output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : N - 1][0 : N - 1],
-	output logic signed [OA_WIDTH - 1 : 0] conv_out [0 : N - 1][0 : CONV_OUT_SIZE]
+	output logic signed [OA_WIDTH - 1 : 0] conv_out [0 : N - 1][0 : CONV_OUT_SIZE - 1]
 );
 	
 	localparam WS = 2'b00;
@@ -35,19 +35,22 @@ module systolic #(
 	logic signed [IA_WIDTH - 1:0] load_in [0 : N - 1][0 : N - 1];
 	logic signed [IA_WIDTH - 1:0] row_buf_out [0 : N - 1];
 	logic signed [W_WIDTH - 1:0] col_buf_out [0 : N - 1];
+	logic signed [OA_WIDTH - 1:0] conv_buf_out [0 : N - 1];
 	logic signed [OA_WIDTH - 1:0] pe_w [0 : N][0 : N - 1];
 
+	logic conv_load [0 : N - 1];
 	logic en_h [0 : N - 1][0 : N];
 	logic en_v [0 : N][0 : N - 1];
 	logic [$clog2(2 * N + 1) : 0] cycles;
 	logic [1 : 0] dataflow;
-	logic fsm_en, load;
+	logic fsm_en, load, conv_buf_en, conv_buf_clr;
 
 	genvar i, j;
 
 	// systolic array controller
 	sys_ctrl #(
-		.N(N)
+		.N(N),
+		.CONV_OUT_SIZE(CONV_OUT_SIZE)
 	) fsm_ctrl (
 		.clk(clk),
 		.rst(rst),
@@ -57,6 +60,8 @@ module systolic #(
 		.load(load),
 		.en(fsm_en),
 		.done(done),
+		.conv_buf_en(conv_buf_en),
+		.conv_buf_clr(conv_buf_clr),
 		.df(dataflow)
 	);
 
@@ -166,11 +171,37 @@ module systolic #(
 		end : col_bufs
 	endgenerate
 
+	generate
+		for(i = 0; i < N; i++) begin : conv_bufs
+			conv_buf #(
+				.CONV_OUT_SIZE(CONV_OUT_SIZE),
+				.WIDTH(OA_WIDTH)
+			) conv_bufs (
+				.clk(clk),
+				.rst(rst),
+				.en(conv_buf_en),
+				.load(conv_load[i]),
+				.clr(conv_buf_clr),
+				.in(pe_w[N][i]),
+				.buf_out(conv_buf_out[i])
+			);
+		end : conv_bufs
+	endgenerate
+
+	generate
+		for(i = 0; i < N; i++) begin
+			assign conv_load[i] = (cycles >= (N + i) && cycles < (N + i + CONV_OUT_SIZE));
+		end
+	endgenerate
+
+	logic [7 : 0] conv_wr_index;
+
 	// cycle counter for writing
 	always_ff @(posedge clk) begin
 		cycles <= fsm_en ? cycles + 1'b1 : '0;
+		conv_wr_index <= (conv_buf_en && conv_wr_index < CONV_OUT_SIZE) ? conv_wr_index + 1'b1 : '0;
 	end
-
+	
 	// write output values
 	always_ff @(posedge clk) begin
 		if(method != RS) begin
@@ -188,10 +219,7 @@ module systolic #(
 			end : out_row
 		end else begin
 			for(int i = 0; i < N; i++) begin
-				for(int j = 0; j < CONV_OUT_SIZE; j++) begin
-					if(cycles == (i + j + N))
-						conv_out[j][i] <= pe_w[N][j];
-				end
+				conv_out[i][conv_wr_index] <=  conv_buf_en ? conv_buf_out[i] : conv_out[i][conv_wr_index];
 			end
 		end
 	end

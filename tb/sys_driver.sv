@@ -2,7 +2,7 @@ class sys_driver extends uvm_driver #(sys_item);
     `uvm_component_utils(sys_driver)
 
     virtual systolic_if #(.M_SIZE(M_SIZE), .K_SIZE(K_SIZE), .N_SIZE(N_SIZE), .IA_WIDTH(IA_WIDTH),
-     .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH),  .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE), .FILTER_SIZE(FILTER_SIZE)).drv vif;
+     .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH),  .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE), .FILTER_SIZE(FILTER_SIZE), .CONV_OUT_SIZE(CONV_OUT_SIZE)).drv vif;
 
     uvm_analysis_port #(sys_item) drv_port;
 
@@ -14,7 +14,7 @@ class sys_driver extends uvm_driver #(sys_item);
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
         if (!uvm_config_db#(virtual systolic_if #(.M_SIZE(M_SIZE), .K_SIZE(K_SIZE), .N_SIZE(N_SIZE), .IA_WIDTH(IA_WIDTH), 
-        .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH), .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE), .FILTER_SIZE(FILTER_SIZE)).drv)::get(
+        .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH), .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE), .FILTER_SIZE(FILTER_SIZE), .CONV_OUT_SIZE(CONV_OUT_SIZE)).drv)::get(
                 this, "", "vif", vif
             )) begin
             `uvm_fatal("NOVIF", "Driver could not get virtual interface")

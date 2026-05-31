@@ -1,5 +1,6 @@
 module sys_ctrl #(
-	parameter N = 8
+	parameter N = 8,
+	parameter CONV_OUT_SIZE
 ) (
 	input clk,
 	input rst,
@@ -9,6 +10,8 @@ module sys_ctrl #(
 	output load,
 	output en,
 	output done,
+	output conv_buf_en,
+	output conv_buf_clr,
 	output logic [1 : 0] df
 );
 	typedef enum logic [2 : 0] {
@@ -28,6 +31,7 @@ module sys_ctrl #(
 	} mode;
 
 	localparam COMPUTE_CYCLES = 3 * N - 1;
+	localparam CONV_COMPUTE_CYCLES = 2 * N + CONV_OUT_SIZE - 1;
 
 	state_t state, next;
 	mode df_next, df_reg; 
@@ -38,6 +42,8 @@ module sys_ctrl #(
 	assign en = (state == COMPUTE);
 	assign done = (state == DONE);
 	assign df = df_reg;
+	assign conv_buf_en = (state == DRAIN) && (method == 2'b11);
+	assign conv_buf_clr = (state == DONE);
 	
 	always_ff @(posedge clk) begin
 		if(!rst) begin
@@ -56,7 +62,7 @@ module sys_ctrl #(
 	always_comb begin
 		next = state;
 		df_next = df_reg;
-
+		
 		case(state)
 			IDLE: begin
 				if(start)
@@ -83,12 +89,22 @@ module sys_ctrl #(
 				next = COMPUTE;
 			end 
 			COMPUTE: begin
-				if(count == COMPUTE_CYCLES)
-					next = DRAIN;
+				if(method != 2'b11) begin
+					if(count == COMPUTE_CYCLES)
+						next = DRAIN;
+				end else begin
+					if(count == CONV_COMPUTE_CYCLES)
+						next = DRAIN;
+				end
 			end
 			DRAIN: begin
-				if(drain == N)
-					next = DONE;
+				if(method != 2'b11) begin
+					if(drain == N)
+						next = DONE;
+				end else begin
+					if(drain == CONV_OUT_SIZE - 1)
+						next = DONE;
+				end
 			end
 			DONE: begin
 				next = IDLE;

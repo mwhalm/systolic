@@ -94,7 +94,7 @@ module tile_ctrl #(
                     end
                     else begin
                         tile_k <= 0;
-                        if(tile_j < active_n_tiles - 1) begin // column tile
+                        if(!row_stationary && tile_j < N_TILES - 1) begin // column tile
                             tile_j <= tile_j + 1'b1;
                             state <= LOAD;
                         end
