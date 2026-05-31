@@ -36,7 +36,7 @@ module sys_ctrl #(
 	state_t state, next;
 	mode df_next, df_reg; 
 
-	logic [$clog2(2 * N) : 0] count, drain;
+	logic [7 : 0] count, drain;
 
 	assign load = (state == LOAD);
 	assign en = (state == COMPUTE);

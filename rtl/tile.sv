@@ -28,17 +28,19 @@ module tile #(
 	localparam OS = 2'b10;
 	localparam RS = 2'b11;
 
-    parameter M_TILES = (M + TILE_SIZE - 1) / TILE_SIZE;
-    parameter K_TILES = (K + TILE_SIZE - 1) / TILE_SIZE;
-    parameter N_TILES = (N + TILE_SIZE - 1) / TILE_SIZE;
-    parameter CONV_TILE_SIZE = TILE_SIZE + FILTER_SIZE - 1;
-    parameter CONV_M_TILES = (CONV_OUT_SIZE + TILE_SIZE - 1) / TILE_SIZE;
-    parameter CONV_N_TILES = (CONV_OUT_SIZE + TILE_SIZE - 1) / TILE_SIZE;
+    localparam M_TILES = (M + TILE_SIZE - 1) / TILE_SIZE;
+    localparam K_TILES = (K + TILE_SIZE - 1) / TILE_SIZE;
+    localparam N_TILES = (N + TILE_SIZE - 1) / TILE_SIZE;
+    localparam CONV_REAL_ROWS = TILE_SIZE + FILTER_SIZE - 1;
+    localparam CONV_MAX_ROWS = 2 * TILE_SIZE - 1;
+    localparam CONV_M_TILES = (CONV_OUT_SIZE + TILE_SIZE - 1) / TILE_SIZE;
+    localparam CONV_N_TILES = (CONV_OUT_SIZE + TILE_SIZE - 1) / TILE_SIZE;
 
     logic signed [IA_WIDTH - 1 : 0] ia_tile [0 : TILE_SIZE - 1][0 : TILE_SIZE - 1];
     logic signed [W_WIDTH - 1 : 0] w_tile [0: TILE_SIZE - 1][0 : TILE_SIZE - 1];
     logic signed [OA_WIDTH - 1 : 0] oa_tile [0 : TILE_SIZE - 1][0 : TILE_SIZE - 1];
-    logic signed [IA_WIDTH - 1 : 0] conv_ia_tile [0 : CONV_TILE_SIZE][0 : CONV_IA_ROW_SIZE - 1];
+    logic signed [IA_WIDTH - 1 : 0] conv_ia_tile [0 : CONV_MAX_ROWS - 1][0 : CONV_IA_ROW_SIZE - 1];
+    logic signed [W_WIDTH - 1 : 0] filter_tile [0 : TILE_SIZE - 1][0 : FILTER_SIZE - 1];
     logic signed [OA_WIDTH - 1 : 0] conv_out_tile [0 : TILE_SIZE - 1][0 : CONV_OUT_SIZE - 1];
 
     logic load_tile, sys_start, sys_done, accumulate, clear_acc, idle;
@@ -78,8 +80,7 @@ module tile #(
         .W_WIDTH(W_WIDTH),
         .OA_WIDTH(OA_WIDTH),
         .FILTER_SIZE(FILTER_SIZE),
-        .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE),
-        .CONV_TILE_SIZE(CONV_TILE_SIZE)
+        .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE)
     ) systolic_array (
         .clk(clk),
         .rst(rst),
@@ -88,7 +89,7 @@ module tile #(
         .ia_in(ia_tile),
         .w_in(w_tile),
         .conv_ia_in(conv_ia_tile),
-        .filter_in(filter_in),
+        .filter_in(filter_tile),
 
         .done(sys_done),
         .oa_out(oa_tile),
@@ -104,11 +105,16 @@ module tile #(
                     w_tile[i][j] <= '0;
                 end
             end
-            for (int i = 0; i < CONV_TILE_SIZE; i++) begin
+            for (int i = 0; i < CONV_MAX_ROWS; i++) begin
                 for (int j = 0; j < CONV_IA_ROW_SIZE; j++) begin
                     conv_ia_tile[i][j] <= '0;
                 end
-            end     
+            end
+            for(int i = 0; i < TILE_SIZE; i++) begin
+                for(int j = 0; j < FILTER_SIZE; j++) begin
+                    filter_tile[i][j] <= '0;
+                end
+            end
         end else if(load_tile) begin
             if(method != 2'b11) begin
                 for(int i = 0; i < TILE_SIZE; i++) begin
@@ -125,14 +131,22 @@ module tile #(
                     end
                 end
             end else begin
-                for (int i = 0; i < CONV_TILE_SIZE; i++) begin
-                    for (int j = 0; j < CONV_IA_ROW_SIZE; j++) begin
-                        if ((tile_i * TILE_SIZE + i < CONV_IA_ROW_SIZE))
+                for(int i = 0; i < CONV_MAX_ROWS; i++) begin
+                    for(int j = 0; j < CONV_IA_ROW_SIZE; j++) begin
+                        if(i < CONV_REAL_ROWS && (tile_i * TILE_SIZE + i < CONV_IA_ROW_SIZE))
                             conv_ia_tile[i][j] <= conv_ia_in[tile_i * TILE_SIZE + i][j];
                         else
                             conv_ia_tile[i][j] <= '0;
                     end
-                end 
+                end
+                for(int i = 0; i < TILE_SIZE; i++) begin
+                    for(int j = 0; j < FILTER_SIZE; j++) begin
+                        if(i < FILTER_SIZE)
+                            filter_tile[i][j] <= filter_in[i][j];
+                        else
+                            filter_tile[i][j] <= '0;
+                    end
+                end
             end
         end
     end
@@ -143,9 +157,14 @@ module tile #(
     // Output Accumulation
     always_ff @(posedge clk) begin
         if(!rst || (idle && start)) begin
-            for(int i = 0; i < 256; i++) begin
-                for(int j = 0; j < 256; j++) begin
+            for(int i = 0; i < M; i++) begin
+                for(int j = 0; j < N; j++) begin
                     oa_out[i][j] <= '0;
+                end
+            end
+            for(int i = 0; i < CONV_OUT_SIZE; i++) begin
+                for(int j = 0; j < CONV_OUT_SIZE; j++) begin
+                    conv_out[i][j] <= '0;
                 end
             end
         end else if(accumulate) begin

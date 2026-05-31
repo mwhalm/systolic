@@ -5,7 +5,6 @@ module systolic #(
 	parameter OA_WIDTH = 24,
 	parameter CONV_IA_ROW_SIZE = 16,
 	parameter FILTER_SIZE = 8,
-	parameter CONV_TILE_SIZE,
 	parameter CONV_OUT_SIZE = CONV_IA_ROW_SIZE - FILTER_SIZE + 1
 )(
 	input clk,
@@ -14,8 +13,8 @@ module systolic #(
 	input logic [1 : 0] method,
 	input logic signed [IA_WIDTH - 1 : 0] ia_in [0 : N - 1][0 : N - 1],
 	input logic signed [W_WIDTH - 1 : 0] w_in [0 : N - 1][0 : N - 1],
-	input logic signed [IA_WIDTH - 1 : 0] conv_ia_in [0 : CONV_TILE_SIZE][0 : CONV_IA_ROW_SIZE - 1],
-	input logic signed [W_WIDTH - 1 : 0] filter_in [0 : FILTER_SIZE - 1][0 : FILTER_SIZE - 1],
+	input logic signed [IA_WIDTH - 1 : 0] conv_ia_in [0 : 2 * N - 2][0 : CONV_IA_ROW_SIZE - 1],
+	input logic signed [W_WIDTH - 1 : 0] filter_in [0 : N - 1][0 : FILTER_SIZE - 1],
 
 	output done,
 	output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : N - 1][0 : N - 1],
@@ -31,13 +30,13 @@ module systolic #(
 	logic signed [W_WIDTH - 1 : 0] col_w [0 : N][0 : N - 1];
 	logic signed [IA_WIDTH - 1 : 0] ia_t [0 : N - 1][0 : N - 1];
 	logic signed [W_WIDTH - 1 : 0] w_t [0 : N - 1][0 : N - 1];
-	logic signed [IA_WIDTH - 1:0] buf_in [0 : N - 1][0 : N - 1];
-	logic signed [IA_WIDTH - 1:0] load_in [0 : N - 1][0 : N - 1];
-	logic signed [IA_WIDTH - 1:0] row_buf_out [0 : N - 1];
-	logic signed [W_WIDTH - 1:0] col_buf_out [0 : N - 1];
-	logic signed [OA_WIDTH - 1:0] conv_buf_out [0 : N - 1];
-	logic signed [OA_WIDTH - 1:0] pe_w [0 : N][0 : N - 1];
-
+	logic signed [IA_WIDTH - 1 : 0] buf_in [0 : N - 1][0 : N - 1];
+	logic signed [IA_WIDTH - 1 : 0] load_in [0 : N - 1][0 : N - 1];
+	logic signed [IA_WIDTH - 1 : 0] row_buf_out [0 : N - 1];
+	logic signed [W_WIDTH - 1 : 0] col_buf_out [0 : N - 1];
+	logic signed [OA_WIDTH - 1 : 0] conv_buf_out [0 : N - 1];
+	logic signed [OA_WIDTH - 1 : 0] pe_w [0 : N][0 : N - 1];
+	
 	logic conv_load [0 : N - 1];
 	logic en_h [0 : N - 1][0 : N];
 	logic en_v [0 : N][0 : N - 1];
