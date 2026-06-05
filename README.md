@@ -1,3 +1,3 @@
-# Reconfigurable Systolic Array for Matrix Multiplication
+# Reconfigurable Systolic Array for Matrix Multiplication and Convolution
 
 
