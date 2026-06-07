@@ -75,10 +75,10 @@ module pe #(
 				row_out <= row_in;
 				unique case(dataflow)
 					WS, IS : begin
-						if(row_in != '0 && static_val != '0)
-							pe_out <= pe_in + row_in * static_val;
-						else
-							pe_out <= pe_in;
+						//if(row_in != '0 && static_val != '0)
+						pe_out <= pe_in + row_in * static_val;
+						//else
+							//pe_out <= pe_in;
 					end 
 					OS : begin
 						col_out <= col_in;
