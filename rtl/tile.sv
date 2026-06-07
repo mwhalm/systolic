@@ -21,8 +21,7 @@ module tile #(
 
     output logic done,
     output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : M - 1][0 : N - 1],
-    output logic signed [OA_WIDTH - 1 : 0] conv_out [0 : CONV_OUT_SIZE - 1][0 : CONV_OUT_SIZE - 1],
-    output logic [2:0] state_debug
+    output logic signed [OA_WIDTH - 1 : 0] conv_out [0 : CONV_OUT_SIZE - 1][0 : CONV_OUT_SIZE - 1]
 );
     localparam WS = 2'b00;
     localparam IS = 2'b01;
@@ -141,8 +140,7 @@ module tile #(
 
         .done(sys_done),
         .oa_out(oa_tile),
-        .conv_out(conv_out_tile),
-	.state_debug(state_debug)
+        .conv_out(conv_out_tile)
     );
 
     // Tile Extraction
