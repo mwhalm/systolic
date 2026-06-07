@@ -1,247 +1,225 @@
-module tile #(
-    parameter M = 16,
-    parameter K = 16,
-    parameter N = 16,
-    parameter TILE_SIZE = 8,
-    parameter IA_WIDTH = 16,
-    parameter W_WIDTH = 16,
-    parameter OA_WIDTH = 24,
-    parameter FILTER_SIZE = 8,
-    parameter CONV_IA_ROW_SIZE = 16,
-    parameter CONV_OUT_SIZE = CONV_IA_ROW_SIZE - FILTER_SIZE + 1
+module systolic #(
+	parameter N = 8,
+	parameter IA_WIDTH = 8,
+	parameter W_WIDTH = 8,
+	parameter OA_WIDTH = 24,
+	parameter CONV_IA_ROW_SIZE = 16,
+	parameter FILTER_SIZE = 8,
+	parameter CONV_OUT_SIZE = CONV_IA_ROW_SIZE - FILTER_SIZE + 1
 )(
-    input logic clk,
-    input logic rst,
-    input logic start,
-    input logic [1 : 0] method,
-    input logic signed [IA_WIDTH - 1: 0] ia_in [0 : M - 1][0 : K - 1],
-    input logic signed [W_WIDTH - 1: 0] w_in [0 : K - 1][0 : N - 1],
-    input logic signed [IA_WIDTH - 1 : 0] conv_ia_in [0 : CONV_IA_ROW_SIZE - 1][0 : CONV_IA_ROW_SIZE - 1],
-    input logic signed [W_WIDTH - 1 : 0] filter_in [0 : FILTER_SIZE - 1][0 : FILTER_SIZE - 1],
+	input clk,
+	input rst,
+	input start,
+	input logic [1 : 0] method,
+	input logic signed [IA_WIDTH - 1 : 0] ia_in [0 : N - 1][0 : N - 1],
+	input logic signed [W_WIDTH - 1 : 0] w_in [0 : N - 1][0 : N - 1],
+	input logic signed [IA_WIDTH - 1 : 0] conv_ia_in [0 : 2 * N - 2][0 : CONV_IA_ROW_SIZE - 1],
+	input logic signed [W_WIDTH - 1 : 0] filter_in [0 : N - 1][0 : FILTER_SIZE - 1],
 
-    output logic done,
-    output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : M - 1][0 : N - 1],
-    output logic signed [OA_WIDTH - 1 : 0] conv_out [0 : CONV_OUT_SIZE - 1][0 : CONV_OUT_SIZE - 1],
-    output logic [2:0] state_debug
+	output done,
+	output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : N - 1][0 : N - 1],
+	output logic signed [OA_WIDTH - 1 : 0] conv_out [0 : N - 1][0 : CONV_OUT_SIZE - 1]
 );
-    localparam WS = 2'b00;
-    localparam IS = 2'b01;
-    localparam OS = 2'b10;
-    localparam RS = 2'b11;
+	
+	localparam WS = 2'b00;
+	localparam IS = 2'b01;
+	localparam OS = 2'b10;
+	localparam RS = 2'b11;
 
-    localparam M_TILES = (M + TILE_SIZE - 1) / TILE_SIZE;
-    localparam K_TILES = (K + TILE_SIZE - 1) / TILE_SIZE;
-    localparam N_TILES = (N + TILE_SIZE - 1) / TILE_SIZE;
-    localparam CONV_REAL_ROWS = TILE_SIZE + FILTER_SIZE - 1;
-    localparam CONV_M_TILES = (CONV_OUT_SIZE + TILE_SIZE - 1) / TILE_SIZE;
-    localparam CONV_N_TILES = (CONV_OUT_SIZE + TILE_SIZE - 1) / TILE_SIZE;
+	logic signed [IA_WIDTH - 1 : 0] row_w [0 : N - 1][0 : N];
+	logic signed [W_WIDTH - 1 : 0] col_w [0 : N][0 : N - 1];
+	logic signed [IA_WIDTH - 1 : 0] ia_t [0 : N - 1][0 : N - 1];
+	logic signed [W_WIDTH - 1 : 0] w_t [0 : N - 1][0 : N - 1];
+	logic signed [IA_WIDTH - 1 : 0] buf_in [0 : N - 1][0 : N - 1];
+	logic signed [IA_WIDTH - 1 : 0] load_in [0 : N - 1][0 : N - 1];
+	logic signed [IA_WIDTH - 1 : 0] row_buf_out [0 : N - 1];
+	logic signed [W_WIDTH - 1 : 0] col_buf_out [0 : N - 1];
+	logic signed [OA_WIDTH - 1 : 0] conv_buf_out [0 : N - 1];
+	logic signed [OA_WIDTH - 1 : 0] pe_w [0 : N][0 : N - 1];
+	
+	logic conv_load [0 : N - 1];
+	logic en_h [0 : N - 1][0 : N];
+	logic en_v [0 : N][0 : N - 1];
+	logic [$clog2(2 * N + 1) : 0] cycles;
+	logic [1 : 0] dataflow;
+	logic fsm_en, load, conv_buf_en, conv_buf_clr;
 
-    logic signed [IA_WIDTH - 1 : 0] ia_tile [0 : TILE_SIZE - 1][0 : TILE_SIZE - 1];
-    logic signed [W_WIDTH - 1 : 0] w_tile [0: TILE_SIZE - 1][0 : TILE_SIZE - 1];
-    logic signed [OA_WIDTH - 1 : 0] oa_tile [0 : TILE_SIZE - 1][0 : TILE_SIZE - 1];
-    logic signed [IA_WIDTH - 1 : 0] conv_ia_tile [0 : CONV_IA_ROW_SIZE - 1][0 : CONV_IA_ROW_SIZE - 1]; // square buffer
-    logic signed [W_WIDTH - 1 : 0] filter_tile [0 : TILE_SIZE - 1][0 : FILTER_SIZE - 1];
-    logic signed [OA_WIDTH - 1 : 0] conv_out_tile [0 : TILE_SIZE - 1][0 : CONV_OUT_SIZE - 1];
+	genvar i, j;
 
-    logic load_tile, sys_start, sys_done, accumulate, clear_acc, idle, tile_ready;
-    logic [15 : 0] bound_r, bound_c;
+	// systolic array controller
+	sys_ctrl #(
+		.N(N),
+		.CONV_OUT_SIZE(CONV_OUT_SIZE)
+	) fsm_ctrl (
+		.clk(clk),
+		.rst(rst),
+		.start(start),
+		.method(method),
 
-    logic [7 : 0] tile_i;
-    logic [7 : 0] tile_j;
-    logic [7 : 0] tile_k;
-
-    logic signed [7:0] ia_tile_q8 [0:TILE_SIZE-1][0:TILE_SIZE-1];
-    logic signed [7:0] w_tile_q8  [0:TILE_SIZE-1][0:TILE_SIZE-1];
-    logic [$clog2(IA_WIDTH):0] shift_a;
-    logic [$clog2(W_WIDTH):0]  shift_b;
-
-    logic signed [7:0] conv_ia_in_q8 [0:CONV_IA_ROW_SIZE-1][0:CONV_IA_ROW_SIZE-1];
-    logic signed [7:0] filter_in_q8  [0:FILTER_SIZE-1][0:FILTER_SIZE-1];
-
-    tile_ctrl #(
-        .TILE_SIZE(TILE_SIZE),
-        .M_TILES(M_TILES),
-        .K_TILES(K_TILES),
-        .N_TILES(N_TILES),
-        .CONV_M_TILES(CONV_M_TILES),
-        .CONV_N_TILES(CONV_N_TILES)
-    ) ctrl (
-        .clk(clk),
-        .rst(rst),
-        .start(start),
-        .method(method),
-
-        .sys_done(sys_done),
-        .load_tile(load_tile),
-        .sys_start(sys_start),
-        .accumulate(accumulate),
-        .done(done),
-        .idle(idle),
-        .tile_i(tile_i),
-        .tile_j(tile_j),
-        .tile_k(tile_k)
-    );
-
-    dynamic_quantizer #(
-	.N(TILE_SIZE),
-	.IN_W(IA_WIDTH),
-	.OUT_W(8)
-    ) qA (
-	.in_tile(ia_tile),
-	.out_tile(ia_tile_q8),
-	.shift(shift_a)
+		.load(load),
+		.en(fsm_en),
+		.done(done),
+		.conv_buf_en(conv_buf_en),
+		.conv_buf_clr(conv_buf_clr),
+		.df(dataflow)
 	);
 
-    dynamic_quantizer #(
-	.N(TILE_SIZE),
-	.IN_W(W_WIDTH),
-	.OUT_W(8)
-    ) qB (
-	.in_tile(w_tile),
-	.out_tile(w_tile_q8),
-	.shift(shift_b)
-	);
+	// top corner of array receives the FSM enable signal and sends it to other PEs
+	assign en_v[0][0] = fsm_en;
+	assign en_h[0][0] = fsm_en;
 
-    dynamic_quantizer #(
-	.N(CONV_IA_ROW_SIZE),
-	.IN_W(IA_WIDTH),
-	.OUT_W(8)
-    ) qConvA (
-	.in_tile(conv_ia_tile),
-	.out_tile(conv_ia_in_q8),
-	.shift()
-	);
+	// connect IA buf to wire connected to column 0 PEs
+	// set starting partial OA to 0
+	generate
+		for(i = 0; i < N; i++) begin : init
+			assign row_w[i][0] = row_buf_out[i];
+			assign col_w[0][i] = col_buf_out[i];
+			assign pe_w[0][i] = '0;
+		end : init
+	endgenerate
 
-   dynamic_quantizer #(
-	.N(FILTER_SIZE),
-	.IN_W(W_WIDTH),
-	.OUT_W(8)
-   ) qConvB (
-	.in_tile(filter_tile),
-	.out_tile(filter_in_q8),
-	.shift()
-	);
+	// instatntiate PEs
+	generate
+		for(i = 0; i < N; i++) begin : pe_row
+			for(j = 0; j < N; j++) begin : pe_col
+				pe #(
+					.IA_WIDTH(IA_WIDTH),
+					.W_WIDTH(W_WIDTH),
+					.OA_WIDTH(OA_WIDTH),
+					.CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE),
+					.FILTER_SIZE(FILTER_SIZE)
+				) pe_block (
+					.clk(clk),
+					.rst(rst),
+					.en_top(en_v[i][j]),
+					.en_left(en_h[i][j]),
+					.load(load),
+					.dataflow(dataflow),
+					.filter_row_in(filter_in[i]),
+					.conv_row_in(conv_ia_in[i + j]),
+					.row_in(row_w[i][j]),
+					.col_in(col_w[i][j]),
+					.load_val(load_in[i][j]),
+					.pe_in(pe_w[i][j]),
 
-    systolic #(
-        .N(TILE_SIZE),
-        .IA_WIDTH(8),
-        .W_WIDTH(8),
-        .OA_WIDTH(OA_WIDTH),
-        .FILTER_SIZE(FILTER_SIZE),
-        .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE)
-    ) systolic_array (
-        .clk(clk),
-        .rst(rst),
-        .start(sys_start),
-        .method(method),
-        .ia_in(ia_tile_q8),
-        .w_in(w_tile_q8),
-        .conv_ia_in(conv_ia_in_q8),
-        .filter_in(filter_in_q8),
+					.en_right(en_h[i][j + 1]),
+					.en_bot(en_v[i + 1][j]),
+					.row_out(row_w[i][j + 1]),
+					.col_out(col_w[i + 1][j]),
+					.pe_out(pe_w[i + 1][j])
+				);
+			end : pe_col
+		end : pe_row
+	endgenerate
 
-        .done(sys_done),
-        .oa_out(oa_tile),
-        .conv_out(conv_out_tile),
-	.state_debug(state_debug)
-    );
+	// transpose matrices
+	generate
+		for(i = 0; i < N; i++) begin : ia_t_r
+			for(j = 0; j < N; j++) begin : ia_t_c
+				assign ia_t[i][j] = ia_in[j][i];
+				assign w_t[i][j] = w_in[j][i];
+			end : ia_t_c
+		end : ia_t_r
+	endgenerate
 
-    // Tile Extraction
-    always_ff @(posedge clk) begin
-        if(!rst) begin
-            for(int i = 0; i < TILE_SIZE; i++) begin
-                for(int j = 0; j < TILE_SIZE; j++) begin
-			ia_tile[i][j] <= '0;
-			w_tile[i][j] <= '0;
-			ia_tile_q8[i][j] <= '0;
-			w_tile_q8[i][j]  <= '0;
-			shift_a    <= '0;
-			shift_b    <= '0;
-			tile_ready <= 0;
-                end
-            end
-            for (int i = 0; i < CONV_IA_ROW_SIZE; i++) begin
-                for (int j = 0; j < CONV_IA_ROW_SIZE; j++) begin
-                    conv_ia_tile[i][j] <= '0;
-                end
-            end
-            for(int i = 0; i < TILE_SIZE; i++) begin
-                for(int j = 0; j < FILTER_SIZE; j++) begin
-                    filter_tile[i][j] <= '0;
-                end
-            end
-        end else if(load_tile) begin
-            tile_ready <= 1;
-            if(method != 2'b11) begin
-                for(int i = 0; i < TILE_SIZE; i++) begin
-                    for(int j = 0; j < TILE_SIZE; j++) begin
-                        if(tile_i * TILE_SIZE + i < M && tile_k * TILE_SIZE + j < K)
-                            ia_tile[i][j] <= ia_in[tile_i * TILE_SIZE + i][tile_k * TILE_SIZE + j];
-                        else
-                            ia_tile[i][j] <= '0;
-                        if(tile_k * TILE_SIZE + i < K && tile_j * TILE_SIZE + j < N)
-                            w_tile[i][j] <= w_in[tile_k * TILE_SIZE + i][tile_j * TILE_SIZE + j];
-                        else
-                            w_tile[i][j] <= '0;
-                    end
-                end
-            end else begin
-                for(int i = 0; i < CONV_IA_ROW_SIZE; i++) begin
-                    for(int j = 0; j < CONV_IA_ROW_SIZE; j++) begin
-                        if(i < CONV_REAL_ROWS && (tile_i * TILE_SIZE + i < CONV_IA_ROW_SIZE))
-                            conv_ia_tile[i][j] <= conv_ia_in[tile_i * TILE_SIZE + i][j];
-                        else
-                            conv_ia_tile[i][j] <= '0;
-                    end
-                end
-                for(int i = 0; i < TILE_SIZE; i++) begin
-                    for(int j = 0; j < FILTER_SIZE; j++) begin
-                        if(i < FILTER_SIZE)
-                            filter_tile[i][j] <= filter_in[i][j];
-                        else
-                            filter_tile[i][j] <= '0;
-                    end
-                end
-            end
-			end else if (sys_start) begin
-            tile_ready <= 0;
-        end
-    end
+	// mux buffer inputs
+	generate
+		for(i = 0; i < N; i++) begin : mux_buf_in
+			assign buf_in[i] = (dataflow[1] == 1'b0) ? ((dataflow[0] == 1'b0) ? ia_t[i] : w_in[i]) : ia_in[i];
+		end : mux_buf_in
+	endgenerate
 
-    assign bound_r = (method == 2'b11) ? CONV_OUT_SIZE : M;
-    assign bound_c = (method == 2'b11) ? CONV_OUT_SIZE : N;
+	// mux static load value (weight and input stationary)
+	generate
+		for(i = 0; i < N; i++) begin : mux_load_vals
+			assign load_in[i] = (dataflow[1] == 1'b0) ? ((dataflow[0] == 1'b0) ? w_in[i] : ia_t[i]) : '{default: '0};
+		end : mux_load_vals
+	endgenerate
 
-    // Output Accumulation
-    always_ff @(posedge clk) begin
-        if(!rst || (idle && start)) begin
-            for(int i = 0; i < M; i++) begin
-                for(int j = 0; j < N; j++) begin
-                    oa_out[i][j] <= '0;
-                end
-            end
-            for(int i = 0; i < CONV_OUT_SIZE; i++) begin
-                for(int j = 0; j < CONV_OUT_SIZE; j++) begin
-                    conv_out[i][j] <= '0;
-                end
-            end
-        end else if(accumulate) begin
-            if(method != RS) begin
-                for(int i = 0; i < TILE_SIZE; i++) begin
-                    for(int j = 0; j < TILE_SIZE; j++) begin
-                        if(tile_i * TILE_SIZE + i < M && tile_j * TILE_SIZE + j < N) begin
-                            oa_out[tile_i * TILE_SIZE + i][tile_j * TILE_SIZE + j] <= oa_out[tile_i * TILE_SIZE + i][tile_j * TILE_SIZE + j] + oa_tile[i][j];
-                        end
-                    end
-                end
-            end else begin
-                for(int i = 0; i < TILE_SIZE; i++) begin
-                    for(int j = 0; j < CONV_OUT_SIZE; j++) begin
+	// row_buffers connected with ripple carry enable signals
+	generate
+		for(i = 0; i < N; i++) begin : row_bufs
+			stream_buf #(
+				.N(N),
+				.WIDTH(IA_WIDTH)
+			) row_buf (
+				.clk(clk),
+				.rst(rst),
+				.en(en_v[i][0]),
+				.load(load),
+				.in(buf_in[i]),
+				.buf_out(row_buf_out[i])
+			);
+		end : row_bufs
+	endgenerate
 
-                        if(tile_i * TILE_SIZE + i < CONV_OUT_SIZE) begin
-                            conv_out[tile_i * TILE_SIZE + i][j] <= conv_out_tile[i][j];
-                        end
-                    end
-                end
-            end
-        end
-    end
+	// col_buffers connected with ripple carry enable signals
+	generate
+		for(i = 0; i < N; i++) begin : col_bufs
+			stream_buf #(
+				.N(N),
+				.WIDTH(W_WIDTH)
+			) col_buf (
+				.clk(clk),
+				.rst(rst),
+				.en(en_h[0][i]),
+				.load(load),
+				.in(w_t[i]),
+				.buf_out(col_buf_out[i])
+			);
+		end : col_bufs
+	endgenerate
+
+	generate
+		for(i = 0; i < N; i++) begin : conv_bufs
+			conv_buf #(
+				.CONV_OUT_SIZE(CONV_OUT_SIZE),
+				.WIDTH(OA_WIDTH)
+			) conv_bufs (
+				.clk(clk),
+				.rst(rst),
+				.en(conv_buf_en),
+				.load(conv_load[i]),
+				.clr(conv_buf_clr),
+				.in(pe_w[N][i]),
+				.buf_out(conv_buf_out[i])
+			);
+		end : conv_bufs
+	endgenerate
+
+	generate
+		for(i = 0; i < N; i++) begin
+			assign conv_load[i] = (cycles >= (N + i) && cycles < (N + i + CONV_OUT_SIZE));
+		end
+	endgenerate
+
+	logic [7 : 0] conv_wr_index;
+
+	// cycle counter for writing
+	always_ff @(posedge clk) begin
+		cycles <= fsm_en ? cycles + 1'b1 : '0;
+		conv_wr_index <= (conv_buf_en && conv_wr_index < CONV_OUT_SIZE) ? conv_wr_index + 1'b1 : '0;
+	end
+	
+	// write output values
+	always_ff @(posedge clk) begin
+		if(method != RS) begin
+			for(int i = 0; i < N; i++) begin : out_row
+				for(int j = 0; j < N; j++) begin : out_col
+					if(cycles == (i + j + N)) begin
+						unique case(method)
+							WS : oa_out[i][j] <= pe_w[N][j];
+							IS : oa_out[j][i] <= pe_w[N][j];
+							OS : oa_out[i][j] <= pe_w[i + 1][j];
+							default : oa_out[i][j] <= 'x;
+						endcase
+					end
+				end : out_col
+			end : out_row
+		end else begin
+			for(int i = 0; i < N; i++) begin
+				conv_out[i][conv_wr_index] <=  conv_buf_en ? conv_buf_out[i] : conv_out[i][conv_wr_index];
+			end
+		end
+	end
 endmodule
