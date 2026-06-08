@@ -5,10 +5,12 @@ module tile #(
     parameter TILE_SIZE = 8,
     parameter IA_WIDTH = 16,
     parameter W_WIDTH = 16,
-    parameter OA_WIDTH = 24,
+    parameter OA_WIDTH,
     parameter FILTER_SIZE = 8,
-    parameter CONV_IA_ROW_SIZE = 16,
-    parameter CONV_OUT_SIZE = CONV_IA_ROW_SIZE - FILTER_SIZE + 1
+    parameter H,
+    parameter W,
+    parameter P ,
+    parameter Q
 )(
     input logic clk,
     input logic rst,
@@ -16,33 +18,33 @@ module tile #(
     input logic [1 : 0] method,
     input logic signed [IA_WIDTH - 1: 0] ia_in [0 : M - 1][0 : K - 1],
     input logic signed [W_WIDTH - 1: 0] w_in [0 : K - 1][0 : N - 1],
-    input logic signed [IA_WIDTH - 1 : 0] conv_ia_in [0 : CONV_IA_ROW_SIZE - 1][0 : CONV_IA_ROW_SIZE - 1],
-    input logic signed [W_WIDTH - 1 : 0] filter_in [0 : FILTER_SIZE - 1][0 : FILTER_SIZE - 1],
+	input logic signed [IA_WIDTH - 1 : 0] conv_ia_in [0 : H - 1][0 : W - 1],
+	input logic signed [W_WIDTH - 1 : 0] filter_in [0 : FILTER_SIZE - 1][0 : FILTER_SIZE - 1],
 
     output logic done,
     output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : M - 1][0 : N - 1],
-    output logic signed [OA_WIDTH - 1 : 0] conv_out [0 : CONV_OUT_SIZE - 1][0 : CONV_OUT_SIZE - 1]
+    output logic signed [OA_WIDTH - 1 : 0] conv_out [0 : P - 1][0 : Q - 1]
 );
-    localparam WS = 2'b00;
-    localparam IS = 2'b01;
-    localparam OS = 2'b10;
-    localparam RS = 2'b11;
+	localparam WS = 2'b00;
+	localparam IS = 2'b01;
+	localparam OS = 2'b10;
+	localparam RS = 2'b11;
 
     localparam M_TILES = (M + TILE_SIZE - 1) / TILE_SIZE;
     localparam K_TILES = (K + TILE_SIZE - 1) / TILE_SIZE;
     localparam N_TILES = (N + TILE_SIZE - 1) / TILE_SIZE;
     localparam CONV_REAL_ROWS = TILE_SIZE + FILTER_SIZE - 1;
-    localparam CONV_M_TILES = (CONV_OUT_SIZE + TILE_SIZE - 1) / TILE_SIZE;
-    localparam CONV_N_TILES = (CONV_OUT_SIZE + TILE_SIZE - 1) / TILE_SIZE;
+    localparam CONV_MAX_TILE_ROWS = 2 * TILE_SIZE - 1;
+    localparam CONV_M_TILES = (P + TILE_SIZE - 1) / TILE_SIZE;
 
     logic signed [IA_WIDTH - 1 : 0] ia_tile [0 : TILE_SIZE - 1][0 : TILE_SIZE - 1];
     logic signed [W_WIDTH - 1 : 0] w_tile [0: TILE_SIZE - 1][0 : TILE_SIZE - 1];
     logic signed [OA_WIDTH - 1 : 0] oa_tile [0 : TILE_SIZE - 1][0 : TILE_SIZE - 1];
-    logic signed [IA_WIDTH - 1 : 0] conv_ia_tile [0 : CONV_IA_ROW_SIZE - 1][0 : CONV_IA_ROW_SIZE - 1]; // square buffer
+    logic signed [IA_WIDTH - 1 : 0] conv_ia_tile [0 : CONV_MAX_TILE_ROWS - 1][0 : W - 1];
     logic signed [W_WIDTH - 1 : 0] filter_tile [0 : TILE_SIZE - 1][0 : FILTER_SIZE - 1];
-    logic signed [OA_WIDTH - 1 : 0] conv_out_tile [0 : TILE_SIZE - 1][0 : CONV_OUT_SIZE - 1];
+    logic signed [OA_WIDTH - 1 : 0] conv_out_tile [0 : TILE_SIZE - 1][0 : Q - 1];
 
-    logic load_tile, sys_start, sys_done, accumulate, clear_acc, idle, tile_ready;
+    logic load_tile, sys_start, sys_done, accumulate, clear_acc, idle;
     logic [15 : 0] bound_r, bound_c;
 
     logic [7 : 0] tile_i;
@@ -54,7 +56,7 @@ module tile #(
     logic [$clog2(IA_WIDTH):0] shift_a;
     logic [$clog2(W_WIDTH):0]  shift_b;
 
-    logic signed [7:0] conv_ia_in_q8 [0:CONV_IA_ROW_SIZE-1][0:CONV_IA_ROW_SIZE-1];
+    logic signed [7:0] conv_ia_in_q8 [0:H-1][0:W-1];
     logic signed [7:0] filter_in_q8  [0:FILTER_SIZE-1][0:FILTER_SIZE-1];
 
     tile_ctrl #(
@@ -62,8 +64,7 @@ module tile #(
         .M_TILES(M_TILES),
         .K_TILES(K_TILES),
         .N_TILES(N_TILES),
-        .CONV_M_TILES(CONV_M_TILES),
-        .CONV_N_TILES(CONV_N_TILES)
+        .CONV_M_TILES(CONV_M_TILES)
     ) ctrl (
         .clk(clk),
         .rst(rst),
@@ -87,10 +88,10 @@ module tile #(
 	.OUT_W(8)
     ) qA (
 	.in_tile(ia_tile),
-	.out_tile(ia_tile_q8),
-	.shift(shift_a)
+    	.out_tile(ia_tile_q8),
+    	.shift(shift_a)
 	);
-
+	
     dynamic_quantizer #(
 	.N(TILE_SIZE),
 	.IN_W(W_WIDTH),
@@ -98,17 +99,17 @@ module tile #(
     ) qB (
 	.in_tile(w_tile),
 	.out_tile(w_tile_q8),
-	.shift(shift_b)
+	.shift(shift_b)	
 	);
 
     dynamic_quantizer #(
-	.N(CONV_IA_ROW_SIZE),
+	.N(H),
 	.IN_W(IA_WIDTH),
 	.OUT_W(8)
     ) qConvA (
-	.in_tile(conv_ia_tile),
-	.out_tile(conv_ia_in_q8),
-	.shift()
+    	.in_tile(conv_ia_tile),
+    	.out_tile(conv_ia_in_q8),
+    	.shift()
 	);
 
    dynamic_quantizer #(
@@ -127,7 +128,8 @@ module tile #(
         .W_WIDTH(8),
         .OA_WIDTH(OA_WIDTH),
         .FILTER_SIZE(FILTER_SIZE),
-        .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE)
+        .CONV_IA_ROW_SIZE(W),
+        .CONV_OUT_SIZE(Q)
     ) systolic_array (
         .clk(clk),
         .rst(rst),
@@ -145,20 +147,19 @@ module tile #(
 
     // Tile Extraction
     always_ff @(posedge clk) begin
-	if(!rst) begin
+        if(!rst) begin
             for(int i = 0; i < TILE_SIZE; i++) begin
                 for(int j = 0; j < TILE_SIZE; j++) begin
-			ia_tile[i][j] <= '0;
-			w_tile[i][j] <= '0;
-			ia_tile_q8[i][j] <= '0;
-			w_tile_q8[i][j]  <= '0;
-			shift_a    <= '0;
-			shift_b    <= '0;
-			tile_ready <= 0;
+                    ia_tile[i][j] <= '0;
+                    w_tile[i][j] <= '0;
+                    ia_tile_q8[i][j] <= '0;
+			        w_tile_q8[i][j]  <= '0;
+			        shift_a    <= '0;
+			        shift_b    <= '0;
                 end
             end
-            for (int i = 0; i < CONV_IA_ROW_SIZE; i++) begin
-                for (int j = 0; j < CONV_IA_ROW_SIZE; j++) begin
+            for (int i = 0; i < CONV_MAX_TILE_ROWS; i++) begin
+                for (int j = 0; j < W; j++) begin
                     conv_ia_tile[i][j] <= '0;
                 end
             end
@@ -167,8 +168,7 @@ module tile #(
                     filter_tile[i][j] <= '0;
                 end
             end
-	end else if(load_tile) begin
-            tile_ready <= 1;
+        end else if(load_tile) begin
             if(method != 2'b11) begin
                 for(int i = 0; i < TILE_SIZE; i++) begin
                     for(int j = 0; j < TILE_SIZE; j++) begin
@@ -176,6 +176,7 @@ module tile #(
                             ia_tile[i][j] <= ia_in[tile_i * TILE_SIZE + i][tile_k * TILE_SIZE + j];
                         else
                             ia_tile[i][j] <= '0;
+
                         if(tile_k * TILE_SIZE + i < K && tile_j * TILE_SIZE + j < N)
                             w_tile[i][j] <= w_in[tile_k * TILE_SIZE + i][tile_j * TILE_SIZE + j];
                         else
@@ -183,9 +184,9 @@ module tile #(
                     end
                 end
             end else begin
-                for(int i = 0; i < CONV_IA_ROW_SIZE; i++) begin
-                    for(int j = 0; j < CONV_IA_ROW_SIZE; j++) begin
-                        if(i < CONV_REAL_ROWS && (tile_i * TILE_SIZE + i < CONV_IA_ROW_SIZE))
+                for(int i = 0; i < CONV_MAX_TILE_ROWS; i++) begin
+                    for(int j = 0; j < W; j++) begin
+                        if(i < CONV_REAL_ROWS && (tile_i * TILE_SIZE + i < H))
                             conv_ia_tile[i][j] <= conv_ia_in[tile_i * TILE_SIZE + i][j];
                         else
                             conv_ia_tile[i][j] <= '0;
@@ -197,16 +198,11 @@ module tile #(
                             filter_tile[i][j] <= filter_in[i][j];
                         else
                             filter_tile[i][j] <= '0;
-	                end
+                    end
                 end
             end
-			end else if (sys_start) begin
-            tile_ready <= 0;
         end
     end
-
-    assign bound_r = (method == 2'b11) ? CONV_OUT_SIZE : M;
-    assign bound_c = (method == 2'b11) ? CONV_OUT_SIZE : N;
 
     // Output Accumulation
     always_ff @(posedge clk) begin
@@ -216,8 +212,8 @@ module tile #(
                     oa_out[i][j] <= '0;
                 end
             end
-            for(int i = 0; i < CONV_OUT_SIZE; i++) begin
-                for(int j = 0; j < CONV_OUT_SIZE; j++) begin
+            for(int i = 0; i < P; i++) begin
+                for(int j = 0; j < Q; j++) begin
                     conv_out[i][j] <= '0;
                 end
             end
@@ -232,9 +228,8 @@ module tile #(
                 end
             end else begin
                 for(int i = 0; i < TILE_SIZE; i++) begin
-                    for(int j = 0; j < CONV_OUT_SIZE; j++) begin
-
-                        if(tile_i * TILE_SIZE + i < CONV_OUT_SIZE) begin
+                    for(int j = 0; j < Q; j++) begin
+                        if(tile_i * TILE_SIZE + i < P) begin
                             conv_out[tile_i * TILE_SIZE + i][j] <= conv_out_tile[i][j];
                         end
                     end

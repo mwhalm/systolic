@@ -5,7 +5,7 @@ class sys_item extends uvm_sequence_item;
 
 	rand logic signed [IA_WIDTH - 1 : 0] ia [0 : M_SIZE - 1][0 : K_SIZE - 1];
 	rand logic signed [W_WIDTH - 1 : 0] w [0 : K_SIZE - 1][0 : N_SIZE - 1];
-	rand logic signed [IA_WIDTH - 1 : 0] conv_ia [0 : CONV_IA_ROW_SIZE - 1][0 : CONV_IA_ROW_SIZE - 1];
+	rand logic signed [IA_WIDTH - 1 : 0] conv_ia [0 : H - 1][0 : W - 1];
 	rand logic signed [W_WIDTH - 1 : 0] filter [0 : FILTER_SIZE - 1][0 : FILTER_SIZE - 1];
 	
 	logic signed [OA_WIDTH - 1 : 0] conv_exp [0 : P - 1][0 : Q - 1];
@@ -101,8 +101,8 @@ class sys_item extends uvm_sequence_item;
 
 	function void print_conv();
 		$write("Conv IA:\n");
-		for(int i = 0; i < CONV_IA_ROW_SIZE; i++) begin
-			for(int j = 0; j < CONV_IA_ROW_SIZE; j++) begin
+		for(int i = 0; i < H; i++) begin
+			for(int j = 0; j < W; j++) begin
 				$write("%d ", conv_ia[i][j]);
 			end
 			$write("\n");
