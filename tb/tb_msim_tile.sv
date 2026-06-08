@@ -1,4 +1,4 @@
-module tb_tile;
+module tb_msim_tilei;
 
     parameter M = 16;
     parameter K = 16;
@@ -22,9 +22,6 @@ module tb_tile;
     logic signed [23:0] oa_out [0:M-1][0:N-1];
     logic signed [23:0] conv_out [0 : CONV_OUT_SIZE - 1][0 : CONV_OUT_SIZE - 1];
 
-    logic [2:0] state_debug;
-
-
     // DUT
     tile #(
         .M(M),
@@ -35,15 +32,14 @@ module tb_tile;
         .clk(clk),
         .rst(rst),
         .start(start),
-        .method(2'b11),
+        .method(2'b10),
         .ia_in(ia_in),
         .w_in(w_in),
-		  .conv_ia_in(conv_ia_in),
-		  .filter_in(filter_in),
+	.conv_ia_in(conv_ia_in),
+	.filter_in(filter_in),
         .done(done),
         .oa_out(oa_out),
-		  .conv_out(conv_out),
-		  .state_debug(state_debug)
+	.conv_out(conv_out)
     );
 	 
 	 
