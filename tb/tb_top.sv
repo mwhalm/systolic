@@ -13,9 +13,11 @@ module tb_top;
         .IA_WIDTH(IA_WIDTH),
         .W_WIDTH(W_WIDTH),
         .OA_WIDTH(OA_WIDTH),
-        .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE),
         .FILTER_SIZE(FILTER_SIZE),
-        .CONV_OUT_SIZE(CONV_OUT_SIZE)
+        .H(H),
+        .W(W),
+        .P(P),
+        .Q(Q)
     ) sif (
         .clk(clk)
     );
@@ -28,9 +30,11 @@ module tb_top;
         .IA_WIDTH(IA_WIDTH),
         .W_WIDTH(W_WIDTH),
         .OA_WIDTH(OA_WIDTH),
-        .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE),
         .FILTER_SIZE(FILTER_SIZE),
-        .CONV_OUT_SIZE(CONV_OUT_SIZE)
+        .H(H),
+        .W(W),
+        .P(P),
+        .Q(Q)
     ) dut (
         .clk(clk),
         .rst(sif.rst),
@@ -51,10 +55,10 @@ module tb_top;
         $fsdbDumpvars(0, tb_top);
         $fsdbDumpMDA(0, tb_top.dut);
         uvm_config_db#(virtual systolic_if #(M_SIZE, K_SIZE, N_SIZE, IA_WIDTH, W_WIDTH, 
-            OA_WIDTH, CONV_IA_ROW_SIZE, FILTER_SIZE, CONV_OUT_SIZE).drv)::set(
+            OA_WIDTH, FILTER_SIZE, H, W, P, Q).drv)::set(
             null, "uvm_test_top.env.agent.driver", "vif", sif.drv);
         uvm_config_db#(virtual systolic_if #(M_SIZE, K_SIZE, N_SIZE, IA_WIDTH, W_WIDTH, 
-            OA_WIDTH, CONV_IA_ROW_SIZE, FILTER_SIZE, CONV_OUT_SIZE).mon)::set(
+            OA_WIDTH, FILTER_SIZE, H, W, P, Q).mon)::set(
             null, "uvm_test_top.env.agent.monitor", "vif", sif.mon);
         run_test("sys_test");
     end

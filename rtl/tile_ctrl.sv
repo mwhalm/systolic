@@ -3,8 +3,7 @@ module tile_ctrl #(
     parameter M_TILES,
     parameter K_TILES,
     parameter N_TILES,
-    parameter CONV_M_TILES,
-    parameter CONV_N_TILES
+    parameter CONV_M_TILES
 )(
     input logic clk,
     input logic rst,
@@ -40,7 +39,6 @@ module tile_ctrl #(
     assign idle = (state == IDLE); 
     assign row_stationary = (active_method == 2'b11);
     assign active_m_tiles = (active_method == 2'b11) ? CONV_M_TILES : M_TILES;
-    assign active_n_tiles = (method == 2'b11) ? CONV_N_TILES : N_TILES;
 
     always_ff @(posedge clk) begin
         if(!rst) begin

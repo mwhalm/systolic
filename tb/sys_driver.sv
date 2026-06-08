@@ -1,8 +1,8 @@
 class sys_driver extends uvm_driver #(sys_item);
     `uvm_component_utils(sys_driver)
 
-    virtual systolic_if #(.M_SIZE(M_SIZE), .K_SIZE(K_SIZE), .N_SIZE(N_SIZE), .IA_WIDTH(IA_WIDTH),
-     .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH),  .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE), .FILTER_SIZE(FILTER_SIZE), .CONV_OUT_SIZE(CONV_OUT_SIZE)).drv vif;
+    virtual systolic_if #(.M_SIZE(M_SIZE), .K_SIZE(K_SIZE), .N_SIZE(N_SIZE), .IA_WIDTH(IA_WIDTH), 
+        .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH), .FILTER_SIZE(FILTER_SIZE), .H(H), .W(W), .P(P), .Q(Q)).drv vif;
 
     uvm_analysis_port #(sys_item) drv_port;
 
@@ -14,7 +14,7 @@ class sys_driver extends uvm_driver #(sys_item);
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
         if (!uvm_config_db#(virtual systolic_if #(.M_SIZE(M_SIZE), .K_SIZE(K_SIZE), .N_SIZE(N_SIZE), .IA_WIDTH(IA_WIDTH), 
-        .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH), .CONV_IA_ROW_SIZE(CONV_IA_ROW_SIZE), .FILTER_SIZE(FILTER_SIZE), .CONV_OUT_SIZE(CONV_OUT_SIZE)).drv)::get(
+        .W_WIDTH(W_WIDTH), .OA_WIDTH(OA_WIDTH), .FILTER_SIZE(FILTER_SIZE), .H(H), .W(W), .P(P), .Q(Q)).drv)::get(
                 this, "", "vif", vif
             )) begin
             `uvm_fatal("NOVIF", "Driver could not get virtual interface")
@@ -57,8 +57,8 @@ class sys_driver extends uvm_driver #(sys_item);
     endtask
 
     task drive_conv(sys_item item);
-        for (int i = 0; i < CONV_IA_ROW_SIZE; i++) begin
-            for (int j = 0; j < CONV_IA_ROW_SIZE; j++) begin
+        for (int i = 0; i < H; i++) begin
+            for (int j = 0; j < W; j++) begin
                 vif.conv_ia_in[i][j] <= item.conv_ia[i][j];
             end
         end
@@ -104,9 +104,9 @@ class sys_driver extends uvm_driver #(sys_item);
 
         for(int i = 0; i < m; i++) begin
             `uvm_info("DRV", "Driving Matrix Multiply", UVM_MEDIUM)
-            `uvm_info("DRV", $sformatf("Dataflow = %b", dataflows[2]), UVM_MEDIUM)
+            `uvm_info("DRV", $sformatf("Dataflow = %b", dataflows[i]), UVM_MEDIUM)
             drv_port.write(item);
-            vif.method <= dataflows[2];
+            vif.method <= dataflows[i];
             @(posedge vif.clk);
             vif.start <= 1'b1;
             @(posedge vif.clk);
