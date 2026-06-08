@@ -74,21 +74,13 @@ module pe #(
 			if(en) begin
 				row_out <= row_in;
 				unique case(dataflow)
-					WS, IS : begin
-						//if(row_in != '0 && static_val != '0)
-						pe_out <= pe_in + row_in * static_val;
-						//else
-							//pe_out <= pe_in;
-					end 
-					OS : begin
-						col_out <= col_in;
-						if(row_in != '0 && col_in != '0)
-							pe_out <= pe_out + row_in * col_in;
-					end
-					RS : begin
-						pe_out <= rs_sum + pe_in;
-						index <= index + 1'b1;
-					end
+					WS: pe_out <= pe_in + row_in * static_val;
+        				IS: pe_out <= pe_in + col_in * static_val;
+        				OS: begin
+            					pe_out <= acc + row_in * col_in;
+            					acc    <= acc + row_in * col_in;
+        				end
+        				RS: pe_out <= pe_in + rs_sum;
 				endcase
 			end
 		end
