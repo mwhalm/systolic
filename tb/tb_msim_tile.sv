@@ -1,0 +1,144 @@
+module tb_tile;
+
+    parameter M = 16;
+    parameter K = 16;
+    parameter N = 16;
+    parameter TILE_SIZE = 8;
+    parameter CONV_IA_ROW_SIZE = 16;
+    parameter FILTER_SIZE = 8;
+    parameter CONV_OUT_SIZE = CONV_IA_ROW_SIZE - FILTER_SIZE + 1;
+
+    logic clk;
+    logic rst;
+    logic start;
+    logic [1:0] method;
+
+    logic signed [15:0] ia_in [0:M-1][0:K-1];
+    logic signed [15:0] w_in  [0:K-1][0:N-1];
+    logic signed [15 : 0] conv_ia_in [0 : CONV_IA_ROW_SIZE - 1][0 : CONV_IA_ROW_SIZE - 1];
+    logic signed [15: 0] filter_in [0 : 7][0 : 7];
+    logic done;
+
+    logic signed [23:0] oa_out [0:M-1][0:N-1];
+    logic signed [23:0] conv_out [0 : CONV_OUT_SIZE - 1][0 : CONV_OUT_SIZE - 1];
+
+    logic [2:0] state_debug;
+
+
+    // DUT
+    tile #(
+        .M(M),
+        .K(K),
+        .N(N),
+        .TILE_SIZE(TILE_SIZE)
+    ) dut (
+        .clk(clk),
+        .rst(rst),
+        .start(start),
+        .method(2'b11),
+        .ia_in(ia_in),
+        .w_in(w_in),
+		  .conv_ia_in(conv_ia_in),
+		  .filter_in(filter_in),
+        .done(done),
+        .oa_out(oa_out),
+		  .conv_out(conv_out),
+		  .state_debug(state_debug)
+    );
+	 
+	 
+logic signed [15:0] golden [0:M-1][0:N-1];
+logic signed [23:0] golden_conv [0 : CONV_OUT_SIZE - 1][0 : CONV_OUT_SIZE - 1];
+initial clk = 0;
+integer f_out;
+integer errors;
+
+always #5 clk = ~clk;
+
+initial begin
+    // Apply reset
+    rst   = 0;
+    start = 0;
+	 
+     //Initilize
+     // Matrix A
+     for (int i = 0; i < M; i++) begin
+     	for (int j = 0; j < K; j++) begin
+		if(i==j) begin
+			ia_in[i][j] = 1;
+		end else begin
+			ia_in[i][j] = 0;
+		end
+	end
+     end
+
+     // Matrix B
+     for (int i = 0; i < K; i++) begin
+	for (int j = 0; j < N; j++) begin
+		if(i==j) begin
+			w_in[i][j] = 1;
+		end else begin
+			w_in[i][j] = 0;
+		end
+	end
+     end
+		 
+    // Zero out unused arrays
+    for(int i=0; i<CONV_IA_ROW_SIZE; i++) for(int j=0; j<CONV_IA_ROW_SIZE; j++) conv_ia_in[i][j] = 0;
+    for(int i=0; i<FILTER_SIZE; i++) for(int j=0; j<FILTER_SIZE; j++) filter_in[i][j] = 0;
+		 
+    // Golden
+    for (int i = 0; i < M; i++) begin
+	for (int j = 0; j < N; j++) begin
+		golden[i][j] = 0;
+		for (int k = 0; k < K; k++) begin
+			golden[i][j] += ia_in[i][k] * w_in[k][j];
+		end
+	end
+    end
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // LAUNCH TEST
+    repeat (5) @(posedge clk);
+
+    // Release reset
+    rst = 1;
+
+    repeat (2) @(posedge clk);
+
+    // Launch exactly one transaction
+    start = 1;
+    @(posedge clk);
+    start = 0;
+
+    $display("START issued @ %0t", $time);
+	 
+    //SCOREBOARD
+    wait(done == 1);
+    @(posedge clk);
+    $display("DONE reached @ %0t. Writing CSV...", $time);
+    f_out = $fopen("sim_out.csv", "w");
+    $fwrite(f_out, "i,j,value\n");
+    errors = 0;
+    
+    for (int i = 0; i < M; i++) begin
+	for (int j = 0; j < N; j++) begin
+		$fwrite(f_out,"%0d,%0d,%0d\n",i,j,oa_out[i][j]);
+	end
+    end
+    $fclose(f_out);
+    for (int i = 0; i < M; i++) begin
+	for (int j = 0; j < N; j++) begin
+		if (oa_out[i][j] !== golden[i][j]) begin
+			$display("MISMATCH [%0d][%0d] expected=%0d actual=%0d",i,j,golden[i][j],oa_out[i][j]);
+			errors++;
+		end
+	end
+    end
+    if(errors == 0)
+	$display("SCOREBOARD PASS");
+    else
+	$display("SCOREBOARD FAIL: %0d errors", errors);
+    repeat (5) @(posedge clk);
+    $finish;
+end
+endmodule
