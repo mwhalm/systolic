@@ -5,12 +5,12 @@ module tile #(
     parameter TILE_SIZE = 8,
     parameter IA_WIDTH = 8,
     parameter W_WIDTH = 8,
-    parameter OA_WIDTH,
-    parameter FILTER_SIZE = 8,
-    parameter H,
-    parameter W,
-    parameter P,
-    parameter Q
+    parameter OA_WIDTH = IA_WIDTH + W_WIDTH + N,
+    parameter FILTER_SIZE = 3,
+    parameter H = 5,
+    parameter W = 5,
+    parameter P = 3,
+    parameter Q = 3
 )(
     input logic clk,
     input logic rst,

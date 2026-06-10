@@ -20,5 +20,4 @@ class sys_env extends uvm_env;
         agent.monitor.mon_port.connect(scoreboard.act_fifo.analysis_export);
         agent.driver.drv_port.connect(scoreboard.exp_fifo.analysis_export);
     endfunction
-
 endclass
