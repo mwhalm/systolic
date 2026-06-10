@@ -83,6 +83,15 @@ class sys_driver extends uvm_driver #(sys_item);
         `uvm_info("DRV", "Finished driving convolution", UVM_MEDIUM)
     endtask
 
+    function string df_string(logic [1:0] dataflow);
+        case (dataflow)
+            2'b00: return "Weight Stationary";
+            2'b01: return "Input Stationary";
+            2'b10: return "Output Stationary";
+            2'b11: return "Row Stationary";
+        endcase
+    endfunction
+
     task drive_mm(sys_item item);
         logic [1 : 0] dataflows [0 : 3];
         int m = 3;
@@ -104,7 +113,7 @@ class sys_driver extends uvm_driver #(sys_item);
 
         for(int i = 0; i < m; i++) begin
             `uvm_info("DRV", "Driving Matrix Multiply", UVM_MEDIUM)
-            `uvm_info("DRV", $sformatf("Dataflow = %b", dataflows[i]), UVM_MEDIUM)
+            `uvm_info("DRV", $sformatf("Dataflow = %s", df_string(dataflows[i])), UVM_MEDIUM)
             drv_port.write(item);
             vif.method <= dataflows[i];
             @(posedge vif.clk);
