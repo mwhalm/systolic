@@ -51,9 +51,6 @@ module tb_top;
 
     initial begin
         clk = 0;
-        $fsdbDumpfile("sys.fsdb");
-        $fsdbDumpvars(0, tb_top);
-        $fsdbDumpMDA(0, tb_top.dut);
         uvm_config_db#(virtual systolic_if #(M_SIZE, K_SIZE, N_SIZE, IA_WIDTH, W_WIDTH, 
             OA_WIDTH, FILTER_SIZE, H, W, P, Q).drv)::set(
             null, "uvm_test_top.env.agent.driver", "vif", sif.drv);
