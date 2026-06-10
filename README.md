@@ -27,6 +27,6 @@ Add +define+PRINT to the previous command
 
 ### 4. Simulate Command
 
-simv +UVM_TESTNAME=sys_test +UVM_VERBOSITY=UVM_MEDIUM +ntb_random_seed_automatic
+./simv +UVM_TESTNAME=sys_test +UVM_VERBOSITY=UVM_MEDIUM +ntb_random_seed_automatic
 
 ### 5. Repeat for other matrix configurations
