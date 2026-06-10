@@ -1,7 +1,6 @@
 -sverilog
 -debug_access+all
 -kdb
--ntb_opts uvm
 -timescale=1ns/1ns
 
 +incdir+../tb
@@ -17,9 +16,3 @@
 ../rtl/tile_ctrl.sv
 ../rtl/tile.sv
 ../tb/tb_top.sv
-
--R
-
-+UVM_TESTNAME=sys_test
-+UVM_VERBOSITY=UVM_MEDIUM
-+ntb_random_seed_automatic
