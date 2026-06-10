@@ -1,20 +1,28 @@
 package sys_pkg;
     import uvm_pkg::*;
     `include "uvm_macros.svh"
-    parameter int M_SIZE = 2;
-    parameter int K_SIZE = 2;
-    parameter int N_SIZE = 2;
     parameter int N = 8;
-    parameter int IA_WIDTH = 8;
-    parameter int W_WIDTH = 8;
-    parameter int OA_WIDTH = 2 * IA_WIDTH + N;
+    parameter int M_SIZE = 5;
+    parameter int K_SIZE = 30;
+    parameter int N_SIZE = 3;
     parameter int FILTER_SIZE = 2;
-	parameter int H = 40;
+    parameter int H = 40;
     parameter int W = 3;
     parameter int R = FILTER_SIZE;
     parameter int S = FILTER_SIZE;
     parameter int P = H - R + 1;
     parameter int Q = W - S + 1;
+    parameter int IA_WIDTH = 8;
+    parameter int W_WIDTH = 8;
+
+    `ifdef CONV
+        localparam int NUM_ADD = FILTER_SIZE * FILTER_SIZE;
+    `else 
+        localparam int NUM_ADD = K_SIZE;
+    `endif
+
+    parameter int OA_WIDTH = IA_WIDTH + W_WIDTH + $clog2(NUM_ADD) + 1;
+
 
     typedef enum logic {
         OP_MM   = 1'b0,

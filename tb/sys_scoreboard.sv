@@ -25,7 +25,7 @@ class sys_scoreboard extends uvm_component;
         if(exp_item.operation == OP_MM) begin
             for (int i = 0; i < M_SIZE; i++) begin
                 for (int j = 0; j < N_SIZE; j++) begin
-                    if (act_item.act[i][j] !== exp_item.exp[i][j]) begin
+                    if (act_item.act[i][j] !== exp_item.exp_quant[i][j]) begin
                         errors++;
                     end
                 end

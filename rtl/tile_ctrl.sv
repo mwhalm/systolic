@@ -9,11 +9,13 @@ module tile_ctrl #(
     input logic rst,
     input logic start,
     input logic sys_done,
+    input logic quant_done,
     input logic [1 : 0] method,
     
     output logic load_tile,
     output logic sys_start,
     output logic accumulate,
+    output logic quant_start,
     output logic done,
     output logic idle,
     output logic [7 : 0] tile_i,
@@ -28,6 +30,7 @@ module tile_ctrl #(
         WAIT,
         ACCUM,
         NEXT_TILE,
+        QUANTIZE,
         FINISHED
     } state_t;
 
@@ -53,10 +56,11 @@ module tile_ctrl #(
             active_method <= '0;
         end
         else begin
-            load_tile <= 0;
-            sys_start <= 0;
-            accumulate <= 0;
-            done <= 0;
+            load_tile <= '0;
+            sys_start <='0;
+            accumulate <= '0;
+            done <= '0;
+            quant_start <= '0;
 
             case(state)
                 IDLE: begin
@@ -103,10 +107,18 @@ module tile_ctrl #(
                                 state <= LOAD;
                             end
                             else begin
-                                state <= FINISHED;
+                                if(method != 2'b11)
+                                    state <= QUANTIZE;
+                                else
+                                    state <= FINISHED;
                             end
                         end
                     end
+                end
+                QUANTIZE: begin
+                    quant_start <= 1'b1;
+                    if(quant_done)
+                        state <= FINISHED;
                 end
 		        FINISHED: begin
                     done <= 1;

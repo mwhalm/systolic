@@ -3,13 +3,13 @@ module tile #(
     parameter K = 16,
     parameter N = 16,
     parameter TILE_SIZE = 8,
-    parameter IA_WIDTH = 16,
-    parameter W_WIDTH = 16,
+    parameter IA_WIDTH = 8,
+    parameter W_WIDTH = 8,
     parameter OA_WIDTH,
     parameter FILTER_SIZE = 8,
     parameter H,
     parameter W,
-    parameter P ,
+    parameter P,
     parameter Q
 )(
     input logic clk,
@@ -22,7 +22,7 @@ module tile #(
 	input logic signed [W_WIDTH - 1 : 0] filter_in [0 : FILTER_SIZE - 1][0 : FILTER_SIZE - 1],
 
     output logic done,
-    output logic signed [OA_WIDTH - 1 : 0] oa_out [0 : M - 1][0 : N - 1],
+    output logic signed [IA_WIDTH - 1 : 0] oa_out [0 : M - 1][0 : N - 1],
     output logic signed [OA_WIDTH - 1 : 0] conv_out [0 : P - 1][0 : Q - 1]
 );
 	localparam WS = 2'b00;
@@ -43,9 +43,9 @@ module tile #(
     logic signed [IA_WIDTH - 1 : 0] conv_ia_tile [0 : CONV_MAX_TILE_ROWS - 1][0 : W - 1];
     logic signed [W_WIDTH - 1 : 0] filter_tile [0 : TILE_SIZE - 1][0 : FILTER_SIZE - 1];
     logic signed [OA_WIDTH - 1 : 0] conv_out_tile [0 : TILE_SIZE - 1][0 : Q - 1];
+    logic signed [OA_WIDTH - 1 : 0] oa_out_temp [0 : M - 1][0 : N - 1];
 
-    logic load_tile, sys_start, sys_done, accumulate, clear_acc, idle;
-    logic [15 : 0] bound_r, bound_c;
+    logic load_tile, sys_start, sys_done, accumulate, clear_acc, idle, quant_start, quant_done;
 
     logic [7 : 0] tile_i;
     logic [7 : 0] tile_j;
@@ -64,9 +64,11 @@ module tile #(
         .method(method),
 
         .sys_done(sys_done),
+        .quant_done(quant_done),
         .load_tile(load_tile),
         .sys_start(sys_start),
         .accumulate(accumulate),
+        .quant_start(quant_start),
         .done(done),
         .idle(idle),
         .tile_i(tile_i),
@@ -96,6 +98,22 @@ module tile #(
         .oa_out(oa_tile),
         .conv_out(conv_out_tile)
     );
+
+    quantize #(
+        .ROWS(M),
+        .COLS(N),
+        .K(K),
+        .IN_WIDTH(OA_WIDTH),
+        .OUT_WIDTH(IA_WIDTH)
+    ) quant (
+        .clk(clk),
+        .rst(rst),
+        .start(quant_start),
+        .oa_in(oa_out_temp),
+        .done(quant_done),
+        .oa_quant(oa_out)  
+    );
+
 
     // Tile Extraction
     always_ff @(posedge clk) begin
@@ -157,7 +175,7 @@ module tile #(
         if(!rst || (idle && start)) begin
             for(int i = 0; i < M; i++) begin
                 for(int j = 0; j < N; j++) begin
-                    oa_out[i][j] <= '0;
+                    oa_out_temp[i][j] <= '0;
                 end
             end
             for(int i = 0; i < P; i++) begin
@@ -170,7 +188,7 @@ module tile #(
                 for(int i = 0; i < TILE_SIZE; i++) begin
                     for(int j = 0; j < TILE_SIZE; j++) begin
                         if(tile_i * TILE_SIZE + i < M && tile_j * TILE_SIZE + j < N) begin
-                            oa_out[tile_i * TILE_SIZE + i][tile_j * TILE_SIZE + j] <= oa_out[tile_i * TILE_SIZE + i][tile_j * TILE_SIZE + j] + oa_tile[i][j];
+                            oa_out_temp[tile_i * TILE_SIZE + i][tile_j * TILE_SIZE + j] <= oa_out_temp[tile_i * TILE_SIZE + i][tile_j * TILE_SIZE + j] + oa_tile[i][j];
                         end
                     end
                 end
