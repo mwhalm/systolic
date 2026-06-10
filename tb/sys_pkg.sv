@@ -12,8 +12,8 @@ package sys_pkg;
     parameter int S = FILTER_SIZE;
     parameter int P = H - R + 1;
     parameter int Q = W - S + 1;
-    parameter int IA_WIDTH = 8;
-    parameter int W_WIDTH = 8;
+    parameter int IA_WIDTH = 16;
+    parameter int W_WIDTH = 16;
 
     `ifdef CONV
         localparam int NUM_ADD = FILTER_SIZE * FILTER_SIZE;

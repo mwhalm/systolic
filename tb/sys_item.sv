@@ -52,7 +52,7 @@ class sys_item extends uvm_sequence_item;
 	endfunction
 
 	function void matrix_multiply();
-		int signed c;
+		longint signed c;
 		for(int i = 0; i < M_SIZE; i++) begin
 			for(int j = 0; j < N_SIZE; j++) begin
 				c = 0;
@@ -76,28 +76,44 @@ class sys_item extends uvm_sequence_item;
 	endfunction
 
 	function void quantize_expected();
-	    longint signed shifted;
+	    longint signed quantized;
 	    longint signed max;
 	    longint signed min;
-		int max_shift  = OA_WIDTH - IA_WIDTH;
-		int base_shift = 2 + $clog2(IA_WIDTH);
-		int raw_shift = base_shift + $clog2(K_SIZE);
-
-		int out_shift = (raw_shift > max_shift) ? max_shift : raw_shift;
+	    longint signed max_val = 0;
+	    longint signed abs = 0;
+	    int shift = 0;
 
 	    max = (1 <<< (IA_WIDTH - 1)) - 1;
 	    min = -(1 <<< (IA_WIDTH - 1));
 
 	    for (int i = 0; i < M_SIZE; i++) begin
 	        for (int j = 0; j < N_SIZE; j++) begin
-	            shifted = longint'(exp[i][j]) >>> out_shift;
+	        	if(longint'(exp[i][j]) < 0)
+	        		abs = -longint'(exp[i][j]);
+	        	else
+	        		abs = longint'(exp[i][j]);
 
-	            if (shifted > max) begin
+	        	if(abs > max_val)
+	        		max_val = abs;
+	        end
+	    end
+
+	    while(max_val > max) begin
+	    	max_val = max_val >> 1;
+	    	shift += 1;
+	    end
+
+	    shift -= 1;
+
+	    for (int i = 0; i < M_SIZE; i++) begin
+	        for (int j = 0; j < N_SIZE; j++) begin
+	            quantized = longint'(exp[i][j]) >>> shift;
+	            if (quantized > max) begin
 	                exp_quant[i][j] = max;
-	            end else if (shifted < min) begin
+	            end else if (quantized < min) begin
 	                exp_quant[i][j] = min;
 	            end else begin
-	                exp_quant[i][j] = shifted[IA_WIDTH - 1 : 0];
+	                exp_quant[i][j] = quantized[IA_WIDTH - 1 : 0];
 	            end
 	        end
 	    end
