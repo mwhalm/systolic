@@ -13,7 +13,7 @@ cd systolic/run
 
 ### 3. Compile with Synopsys VCS with UVM enabled
 
-Configure systolic array size and matrix widths in tb/sys_pkg.sv
+Configure systolic array size, matrix sizes, and data width in tb/sys_pkg.sv
 
 #### For Matrix Multiplication:
 vcs -full64 -ntb_opts uvm-1.1 +define+MM -f run.f
